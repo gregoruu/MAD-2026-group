@@ -1,4 +1,4 @@
-# **App name: TBA**
+# **App name: *(TBA)***
 
 # **Team members: Marten Tiisler, Kristo Kontse, Gregor Uustalu, Sander Zirel, Anna Liisa Nurm**
 
@@ -10,3 +10,6 @@ Users often spend an excessive amount of time scrolling through multiple streami
 
 # **Product purpose**
 Serve as a fast and centralized recommendation platform that remembers and analyzes viewing history to pick movies that users genuinely enjoy without excessive cross-platform searching.
+
+# **Business goals**
+The primary goal of this project is to design and deploy a fully functional Minimum Viable Product (MVP) that integrates movie search, user preferences, and personal watchlists into a single platform. By delivering personalized recommendations based on user likings and watch history, the application aims to improve the overall user experience by minimizing decision fatigue and reducing the time spent on choosing movies. Additionally, the project focuses on implementing a smart recommendation algorithm to ensure accurate and relevant movie suggestions. 
