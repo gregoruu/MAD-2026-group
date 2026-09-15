@@ -1,4 +1,4 @@
-# **App name: Movara***
+# **App name: Movara**
 
 # **Team members: Marten Tiisler, Kristo Kontse, Gregor Uustalu, Sander Zirel, Anna Liisa Nurm**
 
