@@ -192,4 +192,3 @@ Main target: **Compact (412 × 917 dp)**, phones in portrait. Also designed: **M
 - All main colour pairs meet WCAG 2.1 AA (see the contrast table above).
 - All text is in sp and follows the phone's font size setting; the smallest text is 12 sp. With a larger font, text wraps and rows grow instead of cutting text.
 - Selected states are never shown only with colour: icons change from outline to filled and labels change, for example "Liked".
-- Every button has a TalkBack label, for example "Like, on", "Navigate back" or "Remove Dune: Part Two from Watch Later". Posters and background images are skipped as decorative.
