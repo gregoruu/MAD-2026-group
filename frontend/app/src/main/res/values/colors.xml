@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Keep the launch window consistent with the Compose palette in Color.kt. -->
+    <color name="movara_background">#07090F</color>
+    <color name="movara_primary">#F0B429</color>
+</resources>

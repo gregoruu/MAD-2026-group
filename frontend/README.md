@@ -4,8 +4,7 @@
 
 1. Install Android Studio **Panda 3 (2025.3.3 Patch 1) or newer**.
 2. From the welcome screen, click **Open**. If another project is open, use **File > Open**.
-3. Select **settings.gradle.kts in the repository root**, for example:
-   `C:\Users\sande\MAD-2026-gruop\settings.gradle.kts`
+3. In the folder where you cloned this repository, select **the root `settings.gradle.kts` file**.
 4. Choose **Open as Project** if prompted, and trust the project.
 5. Wait for the Gradle import and downloads to finish. The first import requires internet access.
 

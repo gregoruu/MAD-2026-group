@@ -1,5 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <style name="Theme.Movara.Base" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/movara_background</item>
+        <item name="android:colorBackground">@color/movara_background</item>
+        <item name="android:colorAccent">@color/movara_primary</item>
+        <item name="android:statusBarColor">@color/movara_background</item>
+        <item name="android:navigationBarColor">@color/movara_background</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
 
-    <style name="Theme.Movara" parent="android:Theme.Material.Light.NoActionBar" />
+    <style name="Theme.Movara" parent="Theme.Movara.Base" />
 </resources>
