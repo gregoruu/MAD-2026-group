@@ -53,6 +53,7 @@ fun MovaraTheme(content: @Composable () -> Unit) {
     MaterialTheme(
         colorScheme = MovaraColorScheme,
         typography = Typography,
+        shapes = MovaraShapes,
         content = content,
     )
 }
