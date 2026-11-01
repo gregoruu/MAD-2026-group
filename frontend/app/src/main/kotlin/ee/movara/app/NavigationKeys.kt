@@ -1,6 +1,6 @@
 package ee.movara.app
 
-import androidx.navigation3.runtime.NavKey
 import kotlinx.serialization.Serializable
 
-@Serializable data object Main : NavKey
+// Type-safe Navigation Compose routes. Each destination is a serializable object or data class.
+@Serializable data object Main
