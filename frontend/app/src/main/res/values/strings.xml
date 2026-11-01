@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Movara</string>
+    <string name="welcome_title">Welcome to %1$s</string>
+    <string name="welcome_description">Discover your next favorite movie.</string>
+</resources>
