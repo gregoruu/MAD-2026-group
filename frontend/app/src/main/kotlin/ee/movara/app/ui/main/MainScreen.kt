@@ -20,15 +20,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import ee.movara.app.R
-import ee.movara.app.data.DefaultDataRepository
 import ee.movara.app.ui.theme.MovaraTheme
 
 @Composable
 fun MainScreen(
+  viewModel: MainScreenViewModel,
   modifier: Modifier = Modifier,
-  viewModel: MainScreenViewModel = viewModel { MainScreenViewModel(DefaultDataRepository()) },
 ) {
   val uiState by viewModel.uiState.collectAsStateWithLifecycle()
   when (val state = uiState) {
