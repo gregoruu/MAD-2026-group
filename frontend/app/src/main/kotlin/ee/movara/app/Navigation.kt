@@ -1,23 +1,17 @@
 package ee.movara.app
 
 import androidx.compose.runtime.Composable
-import androidx.navigation3.runtime.entryProvider
-import androidx.navigation3.runtime.rememberNavBackStack
-import androidx.navigation3.ui.NavDisplay
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
 import ee.movara.app.ui.main.MainScreen
 
 @Composable
 fun MainNavigation() {
-  val backStack = rememberNavBackStack(Main)
+  val navController = rememberNavController()
 
-  NavDisplay(
-    backStack = backStack,
-    onBack = { backStack.removeLastOrNull() },
-    entryProvider =
-      entryProvider {
-        entry<Main> {
-          MainScreen()
-        }
-      },
-  )
+  // Only the starter screen for now; the real destinations are added in issue #30.
+  NavHost(navController = navController, startDestination = Main) {
+    composable<Main> { MainScreen() }
+  }
 }
