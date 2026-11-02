@@ -90,7 +90,52 @@ For everyday use: **open the project → start the emulator → select Movara an
 
 If the configuration is missing or its module list is empty, the Android project has not imported successfully. Check the Gradle import error in the Build output before creating another run configuration.
 
-## 6. Enable automatic Compose UI updates
+## 6. Build variants
+
+The app module has three build types. Everyday development uses **debug**. **staging** is the build the team installs and tests; **release** is what a shipped build would be.
+
+| Build type | Application id | App name | Debuggable | HTTP logging | Shrinking | Signed with |
+|---|---|---|---|---|---|---|
+| `debug` | `ee.movara.app` | Movara | yes | on | off | debug keystore |
+| `staging` | `ee.movara.app.staging` | Movara (Staging) | yes | on | **on** | debug keystore |
+| `release` | `ee.movara.app` | Movara | no | off | on | release keystore |
+
+`staging` has its own application id, so it installs next to a release build on the same device instead of replacing it. Its version name ends in `-staging`.
+
+**Staging is shrunk on purpose.** It is the build the team installs, so it has to be the one that proves R8 works. If only `release` were shrunk, nothing anybody runs would exercise the shrinking rules and a missing keep rule would stay hidden until it was too late to fix. The price is that stack traces from a staging build are obfuscated; the mapping file that decodes them is written to `frontend/app/build/outputs/mapping/staging/`. Use a **debug** build when you need a readable stack trace or the Layout Inspector.
+
+Build them from the command line:
+
+```
+./gradlew :app:assembleDebug
+./gradlew :app:assembleStaging
+./gradlew :app:assembleRelease
+```
+
+The packages appear under `frontend/app/build/outputs/apk/<build type>/`. In Android Studio, switch between build types in **Build > Select Build Variant**.
+
+Code can branch on the current variant through `BuildConfig.ENABLE_HTTP_LOGGING`, which is `true` for debug and staging and `false` for release. Use that flag instead of checking `BuildConfig.DEBUG` when deciding whether to attach the OkHttp logging interceptor, so staging logs too.
+
+### Signing a release build
+
+The release keystore is **never committed**. `*.jks` and `*.keystore` are listed in `.gitignore`. Keep the file outside the repository and point at it from `local.properties`:
+
+```properties
+RELEASE_KEYSTORE_PATH=C:/path/to/movara-release.jks
+RELEASE_KEYSTORE_PASSWORD=...
+RELEASE_KEY_ALIAS=movara
+RELEASE_KEY_PASSWORD=...
+```
+
+Use forward slashes even on Windows. `local.properties` is read with `java.util.Properties`, which treats `\` as an escape character. A relative path is resolved against the repository root. A build server can supply the same four values as environment variables instead.
+
+If **none** of the four values are set, the release variant still builds but comes out as `app-release-unsigned.apk` and cannot be installed on a device. The build prints a warning saying so. That is the normal case for everyone who is not preparing a shared build.
+
+If **some** are set and some are not, or the path does not point at a file, the release build **fails** with a message naming the problem. A half-configured keystore means somebody wanted a signed build, so the build stops rather than handing back an unsigned package that looks finished.
+
+Only the person preparing a shared build needs the keystore. Everyone else can ignore this section; debug and staging are signed with the local debug keystore that Android Studio manages for you.
+
+## 7. Enable automatic Compose UI updates
 
 1. Open **File > Settings > Editor > Live Edit**. On macOS, Settings is under the **Android Studio** menu.
 2. Enable **Live Edit** and choose **Automatic**.
@@ -107,3 +152,6 @@ Live Edit requires API 30 or newer; the API 37 emulator meets this requirement. 
 - **Emulator fails to boot:** use the virtual device's menu in Device Manager and choose **Cold Boot**.
 - **Build fails:** inspect the first relevant error in the **Build** tool window.
 - **No movies load / `TMDB_API_KEY is not set` in the build output:** add your key to the repository root's `local.properties` as described in section 3, then sync Gradle again.
+- **`The release build is not signed` / you only get `app-release-unsigned.apk`:** none of the four `RELEASE_*` values are set. See section 6. Debug and staging builds do not need them, so this is expected unless you are preparing a shared build.
+- **`Release signing is incomplete` or `no keystore was found at …`:** some of the four values are set and some are not, or the path does not point at a file. The message names the resolved path and which values are blank. Note that a Windows path must use forward slashes — `local.properties` is read with `java.util.Properties`, which treats `\` as an escape character, so `C:\keys\movara.jks` silently becomes `C:keysmovara.jks`.
+- **Release build crashes where debug works:** only the release build shrinks code, so the cause is usually a missing R8 keep rule. Add it to `frontend/app/proguard-rules.pro` and say in a comment which library needs it.
