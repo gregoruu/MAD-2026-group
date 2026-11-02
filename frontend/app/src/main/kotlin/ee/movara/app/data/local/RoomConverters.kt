@@ -1,11 +1,11 @@
 package ee.movara.app.data.local
 
-import androidx.room.TypeConverters
+import androidx.room.TypeConverter
 
 class RoomConverters {
-    @TypeConverters
+    @TypeConverter
     fun fromMovieListType(value: MovieListType): String = value.name
 
-    @TypeConverters
+    @TypeConverter
     fun toMovieListType(value: String): MovieListType = MovieListType.valueOf(value)
 }
