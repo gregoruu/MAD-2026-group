@@ -183,6 +183,10 @@ android {
   }
 }
 
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+}
+
 kotlin {
   jvmToolchain(17)
 }

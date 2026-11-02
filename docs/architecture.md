@@ -34,10 +34,30 @@ repositories inside screen composables or ViewModels. Add future services, datab
 and repositories to the container; Hilt can replace it if dependency wiring grows.
 
 `MainScreenViewModel` demonstrates the boundary using the starter
-`DataRepository`; it is a greeting stub, not the movie backend. Retrofit and Room
-will be added with their features. Mirror production packages under `src/test/kotlin`
+`DataRepository`; it is a greeting stub, not the movie backend. Room is configured through AppContainer. The Retrofit service will be
+added with the network features. Mirror production packages under `src/test/kotlin`
 and `src/androidTest/kotlin`; use fake repository interfaces for ViewModel tests
 and pass plain state/data to screen UI tests and previews.
+
+## Local database
+
+Movara stores the user's movie lists in the Room database `movara.db`.
+The initial database version is 1.
+
+The `saved_movie` table uses `(tmdbId, listType)` as its composite primary
+key, allowing a movie to belong to multiple lists independently.
+DAO queries expose Flow values, ordered by newest addition first,
+and provide a movie count for each list.
+
+Database schemas are exported to `frontend/app/schemas` and committed
+to version control.
+
+Future schema changes must increment the database version and provide
+a tested migration that preserves existing user lists. Destructive
+migration fallback is not used because the lists contain user data.
+
+AppContainer owns the database instance. Repositories access DAOs;
+screens and ViewModels do not access the database directly.
 
 ## Decisions
 
