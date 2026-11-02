@@ -38,3 +38,9 @@ and repositories to the container; Hilt can replace it if dependency wiring grow
 will be added with their features. Mirror production packages under `src/test/kotlin`
 and `src/androidTest/kotlin`; use fake repository interfaces for ViewModel tests
 and pass plain state/data to screen UI tests and previews.
+
+## Decisions
+
+Choices that were not obvious, and what was rejected along the way, are recorded one
+file at a time in [docs/decisions](decisions/README.md). Read the decision before
+changing the thing it describes.
