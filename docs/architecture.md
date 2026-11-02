@@ -5,6 +5,7 @@ The Android module is `frontend/app`; production packages live under
 
 | Package | Code that belongs here |
 | --- | --- |
+| `ee.movara.app` (root package) | App entry points (`MainActivity`, `MovaraApplication`), dependency wiring (`AppContainer` and its extensions), and app-level navigation graphs and keys (`Navigation`, `NavigationKeys`) |
 | `data/remote` | Retrofit services, network DTOs and remote data sources |
 | `data/local` | Room database, DAOs, entities and local data sources |
 | `data/repository` | Repository interfaces and implementations; source coordination and mapping to domain models |
