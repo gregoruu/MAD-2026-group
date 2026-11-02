@@ -1,0 +1,5 @@
+<resources>
+    <!-- Overrides the name from the main source set, so a staging install is
+         recognisable on a device that also has a release build. -->
+    <string name="app_name">Movara (Staging)</string>
+</resources>

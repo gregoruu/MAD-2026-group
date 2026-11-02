@@ -58,3 +58,9 @@ migration fallback is not used because the lists contain user data.
 
 AppContainer owns the database instance. Repositories access DAOs;
 screens and ViewModels do not access the database directly.
+
+## Decisions
+
+Choices that were not obvious, and what was rejected along the way, are recorded one
+file at a time in [docs/decisions](decisions/README.md). Read the decision before
+changing the thing it describes.
