@@ -21,7 +21,10 @@ class MainActivity : ComponentActivity() {
       navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
     )
     setContent {
-      MovaraTheme { Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) { MainNavigation() } }
+      MovaraTheme {
+        Surface(modifier = Modifier.fillMaxSize(),
+          color = MaterialTheme.colorScheme.background) {
+          MainNavigation((application as MovaraApplication).container) } }
     }
   }
 }

@@ -2,7 +2,7 @@ package ee.movara.app.ui.main
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import ee.movara.app.data.DataRepository
+import ee.movara.app.data.repository.DataRepository
 import ee.movara.app.ui.main.MainScreenUiState.Success
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow

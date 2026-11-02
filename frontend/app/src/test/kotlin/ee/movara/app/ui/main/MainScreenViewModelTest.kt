@@ -1,6 +1,6 @@
 package ee.movara.app.ui.main
 
-import ee.movara.app.data.DataRepository
+import ee.movara.app.data.repository.DataRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
