@@ -1,8 +1,34 @@
+import java.util.Properties
+
 plugins {
   alias(libs.plugins.android.application)
   alias(libs.plugins.compose.compiler)
   alias(libs.plugins.kotlin.serialization)
   alias(libs.plugins.ksp)
+}
+
+// The TMDB API key is never committed. Developers put it in the ignored local.properties
+// file at the repository root; build servers pass it as the TMDB_API_KEY environment
+// variable. Both sources are read through the provider API, so the configuration cache
+// is invalidated when the key changes.
+val localPropertiesText: String? = providers.fileContents(
+  isolated.rootProject.projectDirectory.file("local.properties")
+).asText.orNull
+
+val keyFromLocalProperties: String = if (localPropertiesText == null) {
+  ""
+} else {
+  val properties = Properties()
+  properties.load(localPropertiesText.reader())
+  properties.getProperty("TMDB_API_KEY").orEmpty().trim()
+}
+
+val keyFromEnvironment: String = providers.environmentVariable("TMDB_API_KEY").orNull.orEmpty().trim()
+
+val tmdbApiKey: String = if (keyFromLocalProperties.isNotEmpty()) {
+  keyFromLocalProperties
+} else {
+  keyFromEnvironment
 }
 
 android {
@@ -19,6 +45,13 @@ android {
     versionCode = 1
     versionName = "1.0"
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+    // buildConfigField writes the value straight into generated Java source,
+    // so the key is escaped and quoted here.
+    val escapedTmdbApiKey = tmdbApiKey
+      .replace("\\", "\\\\")
+      .replace("\"", "\\\"")
+    buildConfigField("String", "TMDB_API_KEY", "\"$escapedTmdbApiKey\"")
   }
 
   buildTypes {
@@ -34,7 +67,7 @@ android {
   buildFeatures {
     compose = true
     aidl = false
-    buildConfig = false
+    buildConfig = true
     shaders = false
   }
 
@@ -47,6 +80,25 @@ android {
 
 kotlin {
   jvmToolchain(17)
+}
+
+// The warning lives in a task action, not at configuration time. A configuration-time
+// warning is only printed on the first build and is then swallowed by the configuration
+// cache, which would let a developer believe the key is configured when it is not.
+val warnAboutMissingTmdbApiKey = tasks.register("warnAboutMissingTmdbApiKey") {
+  val keyIsMissing = tmdbApiKey.isEmpty()
+  doLast {
+    if (keyIsMissing) {
+      logger.warn(
+        "TMDB_API_KEY is not set. Add it to local.properties at the repository root " +
+          "(see frontend/README.md). Requests to TMDB will fail without it."
+      )
+    }
+  }
+}
+
+tasks.named("preBuild") {
+  dependsOn(warnAboutMissingTmdbApiKey)
 }
 
 dependencies {

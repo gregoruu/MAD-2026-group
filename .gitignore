@@ -3,5 +3,11 @@
 .kotlin/
 build/
 out/
-local.properties
 *.iml
+
+# Local machine configuration and secrets. Never commit these.
+local.properties
+
+# Signing keys. Never commit these.
+*.jks
+*.keystore
