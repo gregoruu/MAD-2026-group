@@ -37,12 +37,16 @@ import androidx.compose.ui.res.painterResource
 import ee.movara.app.ui.theme.MovaraTextSecondary
 import androidx.compose.ui.graphics.Color
 
+// Main navigation structure of application.
+// Defines the three primary destinations: Home, Genres and My Movies.
+// Also provides navigation to secondary screens such as Search, Selected Genre, Movie Details and About.
 @Composable
 fun MainNavigation(container: AppContainer) {
   val navController = rememberNavController()
   val currentDestination =
     navController.currentBackStackEntryAsState().value?.destination
 
+//Shared layout and bottom navigation bar.
   Scaffold(
     bottomBar = {
       NavigationBar(
@@ -76,6 +80,7 @@ fun MainNavigation(container: AppContainer) {
 
       }
     }
+    // Register all navigation destinations and their screen content.
   ) { padding ->
     NavHost(
       navController = navController,
@@ -225,7 +230,7 @@ private fun <T : Any> NavHostController.openTab(route: T) {
   }
 }
 
-
+// Reusable bottom navigation item
 @Composable
 private fun RowScope.MainTabItem(
   label: String,
