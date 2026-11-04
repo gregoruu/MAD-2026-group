@@ -36,6 +36,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.ui.res.painterResource
 import ee.movara.app.ui.theme.MovaraTextSecondary
 import androidx.compose.ui.graphics.Color
+import ee.movara.app.ui.about.AboutScreen
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 
 @Composable
 fun MainNavigation(container: AppContainer) {
@@ -45,35 +48,37 @@ fun MainNavigation(container: AppContainer) {
 
   Scaffold(
     bottomBar = {
-      NavigationBar(
+      if (currentDestination?.hasRoute<AboutRoute>() != true) {
+        NavigationBar(
+
         modifier = Modifier.height(80.dp),
         containerColor = MovaraSurface
       ) {
 
-        MainTabItem(
-          label = "Home",
-          outlinedIcon = R.drawable.ic_nav_home_outline,
-          filledIcon = R.drawable.ic_nav_home_filled,
-          selected = currentDestination?.hasRoute<HomeRoute>() == true,
-          onClick = { navController.openTab(HomeRoute) }
-        )
+          MainTabItem(
+            label = "Home",
+            outlinedIcon = R.drawable.ic_nav_home_outline,
+            filledIcon = R.drawable.ic_nav_home_filled,
+            selected = currentDestination?.hasRoute<HomeRoute>() == true,
+            onClick = { navController.openTab(HomeRoute) }
+          )
 
-        MainTabItem(
-          label = "Genres",
-          outlinedIcon = R.drawable.ic_nav_style_outline,
-          filledIcon = R.drawable.ic_nav_style_filled,
-          selected = currentDestination?.hasRoute<GenresRoute>() == true,
-          onClick = { navController.openTab(GenresRoute) }
-        )
+          MainTabItem(
+            label = "Genres",
+            outlinedIcon = R.drawable.ic_nav_style_outline,
+            filledIcon = R.drawable.ic_nav_style_filled,
+            selected = currentDestination?.hasRoute<GenresRoute>() == true,
+            onClick = { navController.openTab(GenresRoute) }
+          )
 
-        MainTabItem(
-          label = "My Movies",
-          outlinedIcon = R.drawable.ic_nav_person_outline,
-          filledIcon = R.drawable.ic_nav_person_filled,
-          selected = currentDestination?.hasRoute<MyMoviesRoute>() == true,
-          onClick = { navController.openTab(MyMoviesRoute) }
-        )
-
+          MainTabItem(
+            label = "My Movies",
+            outlinedIcon = R.drawable.ic_nav_person_outline,
+            filledIcon = R.drawable.ic_nav_person_filled,
+            selected = currentDestination?.hasRoute<MyMoviesRoute>() == true,
+            onClick = { navController.openTab(MyMoviesRoute) }
+          )
+        }
       }
     }
   ) { padding ->
@@ -137,23 +142,36 @@ fun MainNavigation(container: AppContainer) {
         }
       }
 
-      composable<MyMoviesRoute> {
-        Column(
-          modifier = Modifier.fillMaxSize(),
-          horizontalAlignment = Alignment.CenterHorizontally,
-          verticalArrangement = Arrangement.Center
-        ) {
-          Text("My Movies", fontSize = 26.sp)
 
-          Button(
+      composable<MyMoviesRoute> {
+        Box(
+          modifier = Modifier.fillMaxSize()
+        ) {
+          // Info button opens the About screen.
+          IconButton(
             onClick = {
               navController.navigate(AboutRoute)
-            }
+            },
+            modifier = Modifier
+              .align(Alignment.TopEnd)
+              .padding(8.dp)
+              .size(48.dp)
           ) {
-            Text("Open About")
+            Icon(
+              painter = painterResource(R.drawable.ic_ui_info),
+              contentDescription = "About Movara",
+              tint = MovaraGold
+            )
           }
+
+          Text(
+            text = "My Movies",
+            fontSize = 26.sp,
+            modifier = Modifier.align(Alignment.Center)
+          )
         }
       }
+
 
       composable<SelectedGenreRoute> {
         Column(
@@ -195,21 +213,15 @@ fun MainNavigation(container: AppContainer) {
         }
       }
 
-      composable<AboutRoute> {
-        Column(
-          modifier = Modifier.fillMaxSize(),
-          horizontalAlignment = Alignment.CenterHorizontally,
-          verticalArrangement = Arrangement.Center
-        ) {
-          Text("About", fontSize = 26.sp)
 
-          Button(
-            onClick = { navController.popBackStack() }
-          ) {
-            Text("Back")
+      composable<AboutRoute> {
+        AboutScreen(
+          onBack = {
+            navController.popBackStack()
           }
-        }
+        )
       }
+
 
     }
   }
