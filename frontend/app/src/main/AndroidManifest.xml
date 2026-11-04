@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- Movie data and poster images are read from TMDB over the network. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <application
         android:name=".MovaraApplication"
         android:allowBackup="true"
