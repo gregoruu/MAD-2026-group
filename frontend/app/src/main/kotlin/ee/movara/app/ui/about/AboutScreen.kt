@@ -1,6 +1,7 @@
 
 package ee.movara.app.ui.about
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -10,18 +11,16 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
 import ee.movara.app.R
 import ee.movara.app.ui.theme.*
 
-
-//About screen containing the project information,team members and third-party attributions.
+//Displays information about Movara, team members, TMDB attribution and third-party licenses.
 
 @Composable
 fun AboutScreen(
@@ -34,7 +33,7 @@ fun AboutScreen(
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 20.dp)
     ) {
-        // Screen header with back button.
+        // Screen header with back navigation.
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -49,7 +48,9 @@ fun AboutScreen(
                     painter = painterResource(
                         R.drawable.ic_ui_arrow_back
                     ),
-                    contentDescription = "Back",
+                    contentDescription = stringResource(
+                        R.string.about_back
+                    ),
                     tint = MovaraText
                 )
             }
@@ -57,7 +58,7 @@ fun AboutScreen(
             Spacer(Modifier.width(8.dp))
 
             Text(
-                text = "About",
+                text = stringResource(R.string.about_title),
                 style = MaterialTheme.typography.titleLarge,
                 color = MovaraText
             )
@@ -65,9 +66,9 @@ fun AboutScreen(
 
         Spacer(Modifier.height(24.dp))
 
-        // App info
+        // Application info
         Text(
-            text = "MOVARA",
+            text = stringResource(R.string.about_app_name),
             style = MaterialTheme.typography.displayLarge,
             color = MovaraGold
         )
@@ -75,7 +76,7 @@ fun AboutScreen(
         Spacer(Modifier.height(8.dp))
 
         Text(
-            text = "Discover your next favorite movie.",
+            text = stringResource(R.string.about_tagline),
             style = MaterialTheme.typography.bodyLarge,
             color = MovaraText
         )
@@ -83,26 +84,26 @@ fun AboutScreen(
         Spacer(Modifier.height(12.dp))
 
         Text(
-            text = "Movara helps you discover movies, " +
-                    "find recommendations and organize " +
-                    "your personal movie lists.",
+            text = stringResource(R.string.about_description),
             style = MaterialTheme.typography.bodyMedium,
             color = MovaraTextSecondary
         )
 
         SectionDivider()
 
-        // TMDB attribution required by the API
-        SectionTitle("MOVIE DATA")
+        // TMDB attribution required by the API terms
+        SectionTitle(
+            stringResource(R.string.about_movie_data)
+        )
 
         Spacer(Modifier.height(12.dp))
 
-        AsyncImage(
-            model = "https://thumb.wikimedia.org/" +
-                    "wikipedia/commons/thumb/8/89/" +
-                    "Tmdb.new.logo.svg/" +
-                    "330px-Tmdb.new.logo.svg.png",
-            contentDescription = "The Movie Database logo",
+        // The official TMDB logo is stored locally.
+        Image(
+            painter = painterResource(R.drawable.tmdb_logo),
+            contentDescription = stringResource(
+                R.string.about_tmdb_logo_description
+            ),
             contentScale = ContentScale.Fit,
             modifier = Modifier
                 .width(144.dp)
@@ -112,8 +113,7 @@ fun AboutScreen(
         Spacer(Modifier.height(12.dp))
 
         Text(
-            text = "This product uses the TMDB API " +
-                    "but is not endorsed or certified by TMDB.",
+            text = stringResource(R.string.about_tmdb_notice),
             style = MaterialTheme.typography.bodyLarge,
             color = MovaraText
         )
@@ -121,33 +121,36 @@ fun AboutScreen(
         Spacer(Modifier.height(8.dp))
 
         Text(
-            text = "Movie information and artwork " +
-                    "are provided by The Movie Database.",
+            text = stringResource(R.string.about_tmdb_source),
             style = MaterialTheme.typography.bodyMedium,
             color = MovaraTextSecondary
         )
 
         CreditLink(
-            label = "The Movie Database",
+            label = stringResource(R.string.about_tmdb_link),
             url = "https://www.themoviedb.org"
         )
 
         SectionDivider()
 
-        // Project team
-        SectionTitle("TEAM MEMBERS")
+        // Team.
+        SectionTitle(
+            stringResource(R.string.about_team_title)
+        )
 
         Spacer(Modifier.height(16.dp))
 
-        listOf(
-            "Marten Tiisler",
-            "Kristo Kohtse",
-            "Gregor Uustalu",
-            "Sander Zirel",
-            "Anna Liisa Nurm"
-        ).forEach { member ->
+        val members = listOf(
+            R.string.about_team_marten,
+            R.string.about_team_kristo,
+            R.string.about_team_gregor,
+            R.string.about_team_sander,
+            R.string.about_team_anna
+        )
+
+        members.forEach { member ->
             Text(
-                text = member,
+                text = stringResource(member),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MovaraText,
                 modifier = Modifier.padding(vertical = 6.dp)
@@ -156,62 +159,75 @@ fun AboutScreen(
 
         SectionDivider()
 
-        // hird-party resources
-        SectionTitle("LICENSES & CREDITS")
-
-        Spacer(Modifier.height(16.dp))
-
-        CreditItem(
-            title = "Barlow Condensed & Inter",
-            description = "Fonts — SIL Open Font License 1.1"
-        )
-
-        CreditLink(
-            label = "View font license",
-            url = "https://openfontlicense.org/" +
-                    "open-font-license-official-text/"
+        // Third-party resources and licenses
+        SectionTitle(
+            stringResource(R.string.about_licenses_title)
         )
 
         Spacer(Modifier.height(16.dp))
 
+        // Font license
         CreditItem(
-            title = "Google Material Symbols",
-            description = "Icons — Apache License 2.0"
+            title = stringResource(R.string.about_fonts_title),
+            description = stringResource(
+                R.string.about_fonts_description
+            )
         )
 
         CreditLink(
-            label = "View icon license",
+            label = stringResource(R.string.about_fonts_link),
+            url = "https://openfontlicense.org/open-font-license-official-text/"
+        )
+
+        Spacer(Modifier.height(16.dp))
+
+        // Icon license
+        CreditItem(
+            title = stringResource(R.string.about_icons_title),
+            description = stringResource(
+                R.string.about_icons_description
+            )
+        )
+
+        CreditLink(
+            label = stringResource(R.string.about_icons_link),
             url = "https://www.apache.org/licenses/LICENSE-2.0"
         )
 
         Spacer(Modifier.height(16.dp))
 
+        // Genre image license
         CreditItem(
-            title = "Unsplash",
-            description = "Genre imagery — Unsplash License"
+            title = stringResource(R.string.about_unsplash_title),
+            description = stringResource(
+                R.string.about_unsplash_description
+            )
         )
 
         CreditLink(
-            label = "View Unsplash license",
+            label = stringResource(R.string.about_unsplash_link),
             url = "https://unsplash.com/license"
         )
 
         Spacer(Modifier.height(16.dp))
 
+        // Official TMDB logo info
         CreditItem(
-            title = "TMDB Logo",
-            description = "Logo artwork by Travis Bell"
+            title = stringResource(R.string.about_logo_title),
+            description = stringResource(
+                R.string.about_logo_description
+            )
         )
 
         CreditLink(
-            label = "Logo source and license",
-            url = "https://commons.wikimedia.org/" +
-                    "wiki/File:Tmdb.new.logo.svg"
+            label = stringResource(R.string.about_logo_link),
+            url = "https://www.themoviedb.org/about/logos-attribution"
         )
 
         Spacer(Modifier.height(32.dp))
     }
 }
+
 
 @Composable
 private fun SectionTitle(title: String) {
@@ -221,6 +237,7 @@ private fun SectionTitle(title: String) {
         color = MovaraGold
     )
 }
+
 
 @Composable
 private fun SectionDivider() {
@@ -235,6 +252,8 @@ private fun SectionDivider() {
 
     Spacer(Modifier.height(28.dp))
 }
+
+
 @Composable
 private fun CreditItem(
     title: String,
@@ -256,6 +275,7 @@ private fun CreditItem(
         )
     }
 }
+
 
 @Composable
 private fun CreditLink(
@@ -280,9 +300,6 @@ private fun CreditLink(
         )
     }
 }
-
-
- //Preview of the About screen.
 
 @Preview(
     showBackground = true,

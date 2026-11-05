@@ -37,8 +37,8 @@ import androidx.compose.ui.res.painterResource
 import ee.movara.app.ui.theme.MovaraTextSecondary
 import androidx.compose.ui.graphics.Color
 import ee.movara.app.ui.about.AboutScreen
-import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.ui.res.stringResource
 
 @Composable
 fun MainNavigation(container: AppContainer) {
@@ -159,7 +159,7 @@ fun MainNavigation(container: AppContainer) {
           ) {
             Icon(
               painter = painterResource(R.drawable.ic_ui_info),
-              contentDescription = "About Movara",
+              contentDescription = stringResource(R.string.about_open),
               tint = MovaraGold
             )
           }
