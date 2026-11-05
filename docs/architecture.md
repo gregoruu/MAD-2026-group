@@ -34,8 +34,8 @@ repositories inside screen composables or ViewModels. Add future services, datab
 and repositories to the container; Hilt can replace it if dependency wiring grows.
 
 `MainScreenViewModel` demonstrates the boundary using the starter
-`DataRepository`; it is a greeting stub, not the movie backend. Room is configured through AppContainer. The Retrofit service will be
-added with the network features. Mirror production packages under `src/test/kotlin`
+`DataRepository`; it is a greeting stub, not the movie backend. Room and the Retrofit
+service are configured through AppContainer. Mirror production packages under `src/test/kotlin`
 and `src/androidTest/kotlin`; use fake repository interfaces for ViewModel tests
 and pass plain state/data to screen UI tests and previews.
 
@@ -50,6 +50,18 @@ The unused `backend/` directory was removed rather than kept as a placeholder.
 The Android application lives in `frontend/app`, and the Gradle project is configured
 at the repository root. See [Decision 1](decisions/0001-tmdb-api-key-in-the-client.md)
 for the accepted API-key handling and build-sharing trade-offs of this approach.
+## TMDB API
+
+Movie data comes from TMDB over Retrofit and OkHttp. `AppContainer` owns one HTTP client
+and one `TmdbApiService`; service functions are `suspend` functions that return parsed
+responses and throw on a failed request. The API key is added by an interceptor, not by
+the service functions, and HTTP logging follows `BuildConfig.ENABLE_HTTP_LOGGING`.
+
+Repositories call the service and map the responses to domain models. ViewModels and
+screens do not see Retrofit types or network exceptions.
+
+The endpoints, the failure behaviour and the logging rules are in
+[docs/api-docs.md](api-docs.md).
 
 ## Local database
 
@@ -70,6 +82,58 @@ migration fallback is not used because the lists contain user data.
 
 AppContainer owns the database instance. Repositories access DAOs;
 screens and ViewModels do not access the database directly.
+
+## Permissions and user accounts
+
+The app declares two Android platform permissions:
+
+| Permission | Purpose |
+| --- | --- |
+| `INTERNET` | Request movie metadata and poster images from TMDB |
+| `ACCESS_NETWORK_STATE` | Allow connectivity checks for offline handling |
+
+Both are normal, install-time permissions. No runtime permission dialog is needed.
+The app does not request access to the camera, microphone, location, contacts or
+shared storage. Room and the image cache use app-private storage without a storage
+permission. See [Android network permissions](https://developer.android.com/develop/connectivity/network-ops/connecting).
+Connectivity monitoring and offline UI are planned under issue #43.
+
+### Why there are no user accounts
+
+Stage 1 scoped Movara as a personal, local movie-list app. Liked, Watch Later and
+Watched entries belong to this installation and are stored in Room on the device.
+There is no registration, login, password storage or account-based synchronization.
+The app does not upload these lists or collect account details such as names,
+email addresses or passwords.
+
+TMDB supplies public movie data directly to the Android app. Film searches and
+movie requests still go to TMDB, which receives the requested data, the app's API
+key and normal network metadata such as the source IP address. The TMDB developer
+key authorizes API access; it is not a Movara user's login credential.
+
+### Uninstalling, backups and device changes
+
+Uninstalling the app or clearing its storage deletes the local Room database and
+its movie lists. Movara has no server copy, export or account recovery feature,
+so users should expect a fresh installation to start with empty lists.
+
+The manifest sets `allowBackup="false"` and `fullBackupContent="false"` to disable
+Android cloud backup and legacy full backup. For Android 12 and newer,
+`res/xml/data_extraction_rules.xml` also excludes the database directory from
+cloud backup and device-to-device transfer, including Room's journal files.
+These transfer rules are explicit because some manufacturers do not apply
+`allowBackup` to device-to-device migration. This is the app's configured policy;
+device-specific transfer behavior has not been verified on every manufacturer.
+See [Android backup and transfer rules](https://developer.android.com/identity/data/autobackup).
+
+### What adding accounts would require
+
+Accounts would require an authentication provider or backend, secure session
+handling, server-side storage tied to a verified user ID, and authorization that
+keeps each user's lists private. The repository would need local/remote
+synchronization with conflict resolution and a migration path for existing local
+lists. Privacy, retention and account/data deletion behavior would also need to be
+defined before shipping that feature. These changes are outside the scope of Stage 3.
 
 ## Decisions
 
