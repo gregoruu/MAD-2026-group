@@ -34,10 +34,23 @@ repositories inside screen composables or ViewModels. Add future services, datab
 and repositories to the container; Hilt can replace it if dependency wiring grows.
 
 `MainScreenViewModel` demonstrates the boundary using the starter
-`DataRepository`; it is a greeting stub, not the movie backend. Room is configured through AppContainer. The Retrofit service will be
-added with the network features. Mirror production packages under `src/test/kotlin`
+`DataRepository`; it is a greeting stub, not the movie backend. Room and the Retrofit
+service are configured through AppContainer. Mirror production packages under `src/test/kotlin`
 and `src/androidTest/kotlin`; use fake repository interfaces for ViewModel tests
 and pass plain state/data to screen UI tests and previews.
+
+## TMDB API
+
+Movie data comes from TMDB over Retrofit and OkHttp. `AppContainer` owns one HTTP client
+and one `TmdbApiService`; service functions are `suspend` functions that return parsed
+responses and throw on a failed request. The API key is added by an interceptor, not by
+the service functions, and HTTP logging follows `BuildConfig.ENABLE_HTTP_LOGGING`.
+
+Repositories call the service and map the responses to domain models. ViewModels and
+screens do not see Retrofit types or network exceptions.
+
+The endpoints, the failure behaviour and the logging rules are in
+[docs/api-docs.md](api-docs.md).
 
 ## Local database
 
