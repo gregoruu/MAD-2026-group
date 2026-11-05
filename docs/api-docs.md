@@ -74,9 +74,14 @@ staging build handed to someone else.
 request that leaves the client, the parsed response, the API key on each request and the
 redaction in the log.
 
-`TmdbApiServiceLiveTest` calls the real TMDB API and parses the answer. It is skipped when
-no key is configured:
+`TmdbApiServiceLiveTest` calls the real TMDB API and parses the answer. It is the only test
+that goes out to the network, so it is skipped unless the run asks for it with
+`-PrunLiveTmdbTests` (or a `RUN_LIVE_TMDB_TESTS` environment variable on a build server):
 
 ```
-./gradlew :app:testDebugUnitTest --tests "*TmdbApiServiceLiveTest"
+./gradlew :app:testDebugUnitTest -PrunLiveTmdbTests --tests "*TmdbApiServiceLiveTest"
 ```
+
+A plain `./gradlew test` leaves it out, so the ordinary test run does not depend on the
+network or on TMDB being up. With the switch on but no key configured, the test fails
+instead of being skipped.

@@ -5,6 +5,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 
@@ -12,14 +13,20 @@ import org.junit.Test
 private const val KNOWN_MOVIE_ID = 550
 
 /**
+ * Set by the build when the live tests are asked for. See `frontend/app/build.gradle.kts`.
+ */
+private const val LIVE_TESTS_SYSTEM_PROPERTY = "movara.runLiveTmdbTests"
+
+/**
  * Calls the real TMDB API over the network and parses what comes back.
  *
- * The key comes from `local.properties`. Without one the whole class is skipped, so a clone
- * with no key still has a green test run. These tests need internet access and depend on
- * TMDB being up, which the rest of the suite does not.
+ * These tests need internet access and depend on TMDB being up, which the rest of the suite
+ * does not, so they do not run unless somebody asks for them. The whole class is skipped
+ * unless the build was started with `-PrunLiveTmdbTests`, which keeps a plain
+ * `./gradlew test` free of the network even on a machine that has a key configured.
  *
  * Run only these:
- * `./gradlew :app:testDebugUnitTest --tests "*TmdbApiServiceLiveTest"`
+ * `./gradlew :app:testDebugUnitTest -PrunLiveTmdbTests --tests "*TmdbApiServiceLiveTest"`
  */
 class TmdbApiServiceLiveTest {
 
@@ -29,7 +36,7 @@ class TmdbApiServiceLiveTest {
 
   @Test
   fun movieDetails_readsAKnownMovieFromTmdb() = runTest {
-    assumeTmdbApiKeyIsConfigured()
+    assumeLiveTmdbTestsAreEnabled()
 
     val details = service.movieDetails(movieId = KNOWN_MOVIE_ID)
 
@@ -46,7 +53,7 @@ class TmdbApiServiceLiveTest {
 
   @Test
   fun searchMovies_readsAPageOfResultsFromTmdb() = runTest {
-    assumeTmdbApiKeyIsConfigured()
+    assumeLiveTmdbTestsAreEnabled()
 
     val page = service.searchMovies(title = "fight club", page = 1)
 
@@ -56,18 +63,32 @@ class TmdbApiServiceLiveTest {
 
   @Test
   fun trendingMovies_readsThisWeeksListFromTmdb() = runTest {
-    assumeTmdbApiKeyIsConfigured()
+    assumeLiveTmdbTestsAreEnabled()
 
     val page = service.trendingMovies(page = 1)
 
     assertTrue(page.toDomainMovies().isNotEmpty())
   }
 
-  private fun assumeTmdbApiKeyIsConfigured() {
+  /**
+   * Skips the test unless the live tests were asked for. When they were asked for but no
+   * key is configured, the test fails instead of being skipped: the run cannot answer the
+   * question it was started for, and a silent skip would look like it had.
+   */
+  private fun assumeLiveTmdbTestsAreEnabled() {
     assumeTrue(
-      "TMDB_API_KEY is not set, so the live TMDB tests are skipped. " +
-        "See section 3 of frontend/README.md.",
-      BuildConfig.TMDB_API_KEY.isNotEmpty()
+      "The live TMDB tests are off. Run them with " +
+        "`./gradlew :app:testDebugUnitTest -PrunLiveTmdbTests " +
+        "--tests \"*TmdbApiServiceLiveTest\"`. See section 3 of frontend/README.md.",
+      System.getProperty(LIVE_TESTS_SYSTEM_PROPERTY).toBoolean()
     )
+
+    if (BuildConfig.TMDB_API_KEY.isEmpty()) {
+      fail(
+        "The live TMDB tests were requested, but TMDB_API_KEY is not set. " +
+          "Add it to local.properties at the repository root, or pass it as an " +
+          "environment variable. See section 3 of frontend/README.md."
+      )
+    }
   }
 }
