@@ -8,7 +8,7 @@
 4. Choose **Open as Project** if prompted, and trust the project.
 5. Wait for the Gradle import and downloads to finish. The first import requires internet access.
 
-Open the repository root to keep **backend**, **frontend**, and **docs** in the same window. There is one Gradle project, configured at the repository root. Its Android application module is `frontend/app`.
+Open the repository root to keep **frontend**, **docs**, and the shared Gradle configuration in the same window. There is one Gradle project, configured at the repository root. Its Android application module is `frontend/app`.
 
 Build configuration is organized as follows:
 
@@ -146,7 +146,6 @@ Live Edit requires API 30 or newer; the API 37 emulator meets this requirement. 
 
 ## Troubleshooting
 
-- **Backend is missing from the sidebar:** switch its dropdown from **Android** to **Project** and expand the repository root.
 - **No Movara configuration / no modules / Cannot obtain the package:** close the project and reopen the repository root's `settings.gradle.kts` as an Android Gradle project. Wait for import to finish and inspect any import errors. Open the root project; `frontend/` only contains the app module and is not a separate project.
 - **No target device:** start your virtual phone in Device Manager and wait for its home screen.
 - **Emulator fails to boot:** use the virtual device's menu in Device Manager and choose **Cold Boot**.

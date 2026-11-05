@@ -39,6 +39,18 @@ added with the network features. Mirror production packages under `src/test/kotl
 and `src/androidTest/kotlin`; use fake repository interfaces for ViewModel tests
 and pass plain state/data to screen UI tests and previews.
 
+## Backend decision
+
+Movara does not have a server component of its own. The Android app is designed to
+request movie data directly from the TMDB API and store the user's Liked, Watch Later
+and Watched lists locally with Room. User accounts and server-side synchronization
+are outside the scope of Stage 3, so a separate backend is not needed.
+
+The unused `backend/` directory was removed rather than kept as a placeholder.
+The Android application lives in `frontend/app`, and the Gradle project is configured
+at the repository root. See [Decision 1](decisions/0001-tmdb-api-key-in-the-client.md)
+for the accepted API-key handling and build-sharing trade-offs of this approach.
+
 ## Local database
 
 Movara stores the user's movie lists in the Room database `movara.db`.
