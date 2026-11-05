@@ -1,5 +1,49 @@
+
 <resources>
+    <!-- Existing application strings -->
     <string name="app_name">Movara</string>
     <string name="welcome_title">Welcome to %1$s</string>
     <string name="welcome_description">Discover your next favorite movie.</string>
+
+    <!-- About screen -->
+    <string name="about_title">About</string>
+    <string name="about_back">Back</string>
+    <string name="about_open">About Movara</string>
+    <string name="about_app_name">MOVARA</string>
+    <string name="about_tagline">Discover your next favorite movie.</string>
+    <string name="about_description">Movara helps you discover movies, find recommendations and organize your personal movie lists.</string>
+
+    <!-- TMDB attribution -->
+    <string name="about_movie_data">MOVIE DATA</string>
+    <string name="about_tmdb_logo_description">The Movie Database logo</string>
+    <string name="about_tmdb_notice">This product uses the TMDB API but is not endorsed or certified by TMDB.</string>
+    <string name="about_tmdb_source">Movie information and artwork are provided by The Movie Database.</string>
+    <string name="about_tmdb_link">The Movie Database</string>
+
+    <!-- Team members -->
+    <string name="about_team_title">TEAM MEMBERS</string>
+    <string name="about_team_marten">Marten Tiisler</string>
+    <string name="about_team_kristo">Kristo Kohtse</string>
+    <string name="about_team_gregor">Gregor Uustalu</string>
+    <string name="about_team_sander">Sander Zirel</string>
+    <string name="about_team_anna">Anna Liisa Nurm</string>
+
+    <!-- Licenses and credits -->
+    <string name="about_licenses_title">LICENSES &amp; CREDITS</string>
+
+    <string name="about_fonts_title">Barlow Condensed &amp; Inter</string>
+    <string name="about_fonts_description">Fonts — SIL Open Font License 1.1</string>
+    <string name="about_fonts_link">View font license</string>
+
+    <string name="about_icons_title">Google Material Symbols</string>
+    <string name="about_icons_description">Icons — Apache License 2.0</string>
+    <string name="about_icons_link">View icon license</string>
+
+    <string name="about_unsplash_title">Unsplash</string>
+    <string name="about_unsplash_description">Genre imagery — Unsplash License</string>
+    <string name="about_unsplash_link">View Unsplash license</string>
+
+    <string name="about_logo_title">TMDB Logo</string>
+    <string name="about_logo_description">Official TMDB branding</string>
+    <string name="about_logo_link">TMDB logos and attribution</string>
 </resources>
