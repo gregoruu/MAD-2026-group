@@ -40,6 +40,8 @@ import ee.movara.app.ui.about.AboutScreen
 import androidx.compose.material3.IconButton
 import androidx.compose.ui.res.stringResource
 import ee.movara.app.ui.genres.GenresScreen
+import androidx.navigation.toRoute
+import ee.movara.app.ui.selectedgenre.SelectedGenreScreen
 
 // Main navigation structure of application.
 // Defines the three primary destinations: Home, Genres and My Movies.
@@ -169,29 +171,21 @@ fun MainNavigation(container: AppContainer) {
         }
       }
 
+      composable<SelectedGenreRoute> { backStackEntry ->
+        val route = backStackEntry.toRoute<SelectedGenreRoute>()
 
-      composable<SelectedGenreRoute> {
-        Column(
-          modifier = Modifier.fillMaxSize(),
-          horizontalAlignment = Alignment.CenterHorizontally,
-          verticalArrangement = Arrangement.Center
-        ) {
-          Text("Selected Genre", fontSize = 26.sp)
-
-          Button(
-            onClick = {
-              navController.navigate(MovieDetailsRoute(1))
-            }
-          ) {
-            Text("Open Movie Details")
+        SelectedGenreScreen(
+          genreId = route.genreId,
+          movies = emptyList(),
+          onBack = {
+            navController.popBackStack()
+          },
+          onMovieClick = { movie ->
+            navController.navigate(
+              MovieDetailsRoute(movie.id)
+            )
           }
-
-          Button(
-            onClick = { navController.popBackStack() }
-          ) {
-            Text("Back")
-          }
-        }
+        )
       }
 
       composable<MovieDetailsRoute> {
