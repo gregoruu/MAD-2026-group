@@ -46,8 +46,23 @@ and one `TmdbApiService`; service functions are `suspend` functions that return 
 responses and throw on a failed request. The API key is added by an interceptor, not by
 the service functions, and HTTP logging follows `BuildConfig.ENABLE_HTTP_LOGGING`.
 
-Repositories call the service and map the responses to domain models. ViewModels and
-screens do not see Retrofit types or network exceptions.
+All movie ViewModels share the `MovieRepository` interface through constructor injection.
+`AppContainer.movieRepository` owns one lazy `DefaultMovieRepository`, using the shared
+`TmdbApiService`, `TmdbCacheDao` and `SavedMovieDao`. The greeting demo is unchanged.
+Repositories map responses to domain models, with `MoviePage` retaining pagination metadata.
+ViewModels and screens do not see Retrofit types, Room entities or network exceptions.
+
+`RepositoryResult` represents success or a safe categorized error. Success identifies
+network, cache or local-list data; TMDB results include the last successful fetch time.
+The repository makes one network attempt and persists validated DTO responses before
+returning fresh data. A cache write failure keeps the fresh result usable and reports
+`cachePersisted = false`. Recoverable failures load the matching Room cache entry;
+cached results may be stale. Cancellation propagates normally.
+
+Saved-list observations, counts and membership are flows of results containing domain
+data. Save/remove operations delegate to the existing DAO. List business rules (#39),
+Home recommendation logic (#40), connectivity UI (#43) and image caching (#48) remain
+separate features.
 
 The endpoints, the failure behaviour and the logging rules are in
 [docs/api-docs.md](api-docs.md).
@@ -55,12 +70,20 @@ The endpoints, the failure behaviour and the logging rules are in
 ## Local database
 
 Movara stores the user's movie lists in the Room database `movara.db`.
-The initial database version is 1.
+The current database version is 2. The explicit `MIGRATION_1_2`, registered in
+AppContainer, adds `tmdb_cache` without changing existing saved movies or their index.
+There is no destructive fallback.
 
 The `saved_movie` table uses `(tmdbId, listType)` as its composite primary
 key, allowing a movie to belong to multiple lists independently.
 DAO queries expose Flow values, ordered by newest addition first,
 and provide a movie count for each list.
+
+The separate `tmdb_cache` table stores a request key, serialized TMDB DTO and successful
+fetch timestamp. Keys distinguish endpoints, normalized queries, movie/genre IDs and
+individual pages, including movie details. Failed requests do not replace successful
+entries; fallback reads and validates the persisted response. There is no expiry or
+automatic retry. This response cache never changes a user's saved-list memberships.
 
 Database schemas are exported to `frontend/app/schemas` and committed
 to version control.
