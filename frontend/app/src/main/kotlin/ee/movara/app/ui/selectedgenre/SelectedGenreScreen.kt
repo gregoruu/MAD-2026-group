@@ -4,10 +4,12 @@ package ee.movara.app.ui.selectedgenre
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
@@ -16,27 +18,25 @@ import androidx.compose.ui.unit.dp
 import ee.movara.app.R
 import ee.movara.app.domain.model.Movie
 import ee.movara.app.ui.components.MovieCard
+import ee.movara.app.ui.components.PulsingPlaceholder
 import ee.movara.app.ui.theme.*
+import kotlinx.coroutines.flow.first
 
-// Returns the name of the selected TMDB genre
-private fun genreName(genreId: Int): String {
-    return when (genreId) {
-        28 -> "Action"
-        18 -> "Drama"
-        878 -> "Sci-Fi"
-        53 -> "Thriller"
-        27 -> "Horror"
-        35 -> "Comedy"
-        10749 -> "Romance"
-        80 -> "Crime"
-        16 -> "Animation"
-        99 -> "Documentary"
-        else -> "Movies"
-    }
+private fun genreName(genreId: Int): String = when (genreId) {
+    28 -> "Action"
+    18 -> "Drama"
+    878 -> "Sci-Fi"
+    53 -> "Thriller"
+    27 -> "Horror"
+    35 -> "Comedy"
+    10749 -> "Romance"
+    80 -> "Crime"
+    16 -> "Animation"
+    99 -> "Documentary"
+    else -> "Movies"
 }
 
-//Displays movies belonging to the selected genre. Data and loading states are provided by the caller.
-
+// displays movies belonging to the selected genre
 @Composable
 fun SelectedGenreScreen(
     genreId: Int,
@@ -45,111 +45,252 @@ fun SelectedGenreScreen(
     onMovieClick: (Movie) -> Unit,
     isLoading: Boolean = false,
     errorMessage: String? = null,
-    onRetry: () -> Unit = {}
+    onRetry: (() -> Unit)? = null,
+    hasMore: Boolean = false,
+    isLoadingMore: Boolean = false,
+    onLoadMore: (() -> Unit)? = null,
+    loadMoreError: String? = null
 ) {
-    Column(
+    BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
             .background(MovaraBackground)
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = 64.dp)
-                .padding(horizontal = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = onBack) {
+        // Three columns on phones, five on medium screens
+        val isMediumScreen = maxWidth >= 600.dp
+        val columns = if (isMediumScreen) 5 else 3
+        val screenPadding = if (isMediumScreen) 24.dp else 20.dp
+        val gridSpacing = if (isMediumScreen) 12.dp else 8.dp
+
+        Column(modifier = Modifier.fillMaxSize()) {
+
+            // Back navigation
+            TextButton(
+                onClick = onBack,
+                modifier = Modifier.padding(
+                    start = screenPadding,
+                    top = 8.dp
+                )
+            ) {
                 Icon(
                     painter = painterResource(
                         R.drawable.ic_ui_arrow_back
                     ),
-                    contentDescription = "Back",
-                    tint = MovaraText
+                    contentDescription = null,
+                    tint = MovaraText,
+                    modifier = Modifier.size(20.dp)
+                )
+
+                Spacer(Modifier.width(8.dp))
+
+                Text(
+                    text = "All Genres",
+                    color = MovaraText
                 )
             }
 
-            Spacer(Modifier.width(8.dp))
-
             Text(
                 text = genreName(genreId),
-                style = MaterialTheme.typography.titleLarge,
-                color = MovaraGold
+                style = MaterialTheme.typography.displayMedium,
+                color = MovaraGold,
+                modifier = Modifier.padding(
+                    start = screenPadding,
+                    end = screenPadding,
+                    top = 8.dp,
+                    bottom = 16.dp
+                )
             )
-        }
 
-        when {
-            // Loading state
-            isLoading -> {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator(
-                        color = MovaraGold
-                    )
-                }
-            }
-
-            // Error state
-            errorMessage != null -> {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Text(
-                        text = errorMessage,
-                        color = MovaraText,
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-
-                    Spacer(Modifier.height(16.dp))
-
-                    Button(onClick = onRetry) {
-                        Text("Try again")
+            when {
+                // Show placeholder movie cards initially
+                isLoading -> {
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(columns),
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(
+                            horizontal = screenPadding,
+                            vertical = 8.dp
+                        ),
+                        horizontalArrangement =
+                            Arrangement.spacedBy(gridSpacing),
+                        verticalArrangement =
+                            Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(columns * 3) {
+                            PulsingPlaceholder(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .aspectRatio(144f / 208f),
+                                cornerRadius = 12.dp
+                            )
+                        }
                     }
                 }
-            }
 
-            // Empty state
-            movies.isEmpty() -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(24.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "No movies found for this genre.",
-                        color = MovaraTextSecondary,
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                }
-            }
-
-            // Grid
-            else -> {
-                LazyVerticalGrid(
-                    columns = GridCells.Adaptive(
-                        minSize = 150.dp
-                    ),
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    horizontalArrangement =
-                        Arrangement.spacedBy(12.dp),
-                    verticalArrangement =
-                        Arrangement.spacedBy(16.dp)
-                ) {
-                    items(movies) { movie ->
-                        MovieCard(
-                            movie = movie,
-                            onClick = {
-                                onMovieClick(movie)
-                            }
+                // Initial loading error
+                errorMessage != null -> {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(24.dp),
+                        horizontalAlignment =
+                            Alignment.CenterHorizontally,
+                        verticalArrangement =
+                            Arrangement.Center
+                    ) {
+                        Text(
+                            text = errorMessage,
+                            color = MovaraText,
+                            style =
+                                MaterialTheme.typography.bodyLarge
                         )
+
+                        // Only show retry when it is functional.
+                        if (onRetry != null) {
+                            Spacer(Modifier.height(16.dp))
+
+                            Button(onClick = onRetry) {
+                                Text("Try again")
+                            }
+                        }
+                    }
+                }
+
+                // No movies were returned
+                movies.isEmpty() -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(24.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "No movies found for this genre.",
+                            color = MovaraTextSecondary,
+                            style =
+                                MaterialTheme.typography.bodyLarge
+                        )
+                    }
+                }
+
+                else -> {
+                    val gridState = rememberLazyGridState()
+
+                    val latestOnLoadMore by rememberUpdatedState(
+                        onLoadMore
+                    )
+
+                    // Request another page near the bottom
+                    LaunchedEffect(
+                        genreId,
+                        gridState,
+                        movies.size,
+                        hasMore,
+                        isLoadingMore,
+                        loadMoreError
+                    ) {
+                        if (
+                            hasMore &&
+                            !isLoadingMore &&
+                            loadMoreError == null &&
+                            latestOnLoadMore != null
+                        ) {
+                            snapshotFlow {
+                                val layoutInfo = gridState.layoutInfo
+                                val lastVisibleIndex =
+                                    layoutInfo.visibleItemsInfo
+                                        .lastOrNull()?.index ?: -1
+
+                                layoutInfo.totalItemsCount > 0 &&
+                                        lastVisibleIndex >=
+                                        layoutInfo.totalItemsCount - 4
+                            }.first { nearBottom -> nearBottom }
+
+                            latestOnLoadMore?.invoke()
+                        }
+                    }
+
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(columns),
+                        state = gridState,
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(
+                            start = screenPadding,
+                            end = screenPadding,
+                            bottom = 24.dp
+                        ),
+                        horizontalArrangement =
+                            Arrangement.spacedBy(gridSpacing),
+                        verticalArrangement =
+                            Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(
+                            items = movies,
+                            key = { movie -> movie.id }
+                        ) { movie ->
+                            MovieCard(
+                                movie = movie,
+                                fillGridCell = true,
+                                onClick = {
+                                    onMovieClick(movie)
+                                }
+                            )
+                        }
+
+                        // Error while loading movies
+                        if (loadMoreError != null) {
+                            item(
+                                span = {
+                                    GridItemSpan(maxLineSpan)
+                                }
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    horizontalAlignment =
+                                        Alignment.CenterHorizontally
+                                ) {
+                                    Text(
+                                        text = loadMoreError,
+                                        color = MovaraText
+                                    )
+
+                                    if (onRetry != null) {
+                                        Spacer(
+                                            Modifier.height(8.dp)
+                                        )
+
+                                        TextButton(
+                                            onClick = onRetry
+                                        ) {
+                                            Text("Try again")
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // next page
+                        if (isLoadingMore) {
+                            item(
+                                span = {
+                                    GridItemSpan(maxLineSpan)
+                                }
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    contentAlignment =
+                                        Alignment.Center
+                                ) {
+                                    CircularProgressIndicator(
+                                        color = MovaraGold
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -157,78 +298,45 @@ fun SelectedGenreScreen(
     }
 }
 
-// Preview of the selected genre screen.
+// Preview-only data, not used for real TMDB requests
+private val sampleMovies = (1..20).map { id ->
+    Movie(
+        id = id,
+        title = "Sample Movie $id",
+        posterPath = null,
+        releaseYear = 2025
+    )
+}
+
 @Preview(
+    name = "Phone - 3 columns",
     showBackground = true,
     widthDp = 412,
     heightDp = 917
 )
 @Composable
-private fun SelectedGenreScreenPreview() {
+private fun PhonePreview() {
     MovaraTheme {
         SelectedGenreScreen(
             genreId = 28,
-            movies = emptyList(),
+            movies = sampleMovies,
             onBack = {},
             onMovieClick = {}
         )
     }
 }
 
-
-/**
- * Sample movie data used only for UI previews.
- * Real movie data will be provided by MovieRepository.
- */
-private val sampleMovies = listOf(
-    Movie(
-        id = 1,
-        title = "Sample Action Movie",
-        posterPath = null,
-        releaseYear = 2025
-    ),
-    Movie(
-        id = 2,
-        title = "Another Movie",
-        posterPath = null,
-        releaseYear = 2024
-    ),
-    Movie(
-        id = 3,
-        title = "Movie with a Longer Title",
-        posterPath = null,
-        releaseYear = 2023
-    ),
-    Movie(
-        id = 4,
-        title = "Fourth Movie",
-        posterPath = null,
-        releaseYear = 2022
-    ),
-    Movie(
-        id = 5,
-        title = "Fifth Movie",
-        posterPath = null,
-        releaseYear = null
-    ),
-    Movie(
-        id = 6,
-        title = "Sixth Movie",
-        posterPath = null,
-        releaseYear = 2021
-    )
-)
 @Preview(
-    name = "Movies loaded",
+    name = "Medium - 5 columns",
     showBackground = true,
-    widthDp = 412,
-    heightDp = 917
+    widthDp = 700,
+    heightDp = 900
 )
 @Composable
-private fun SelectedGenreMoviesPreview() {
+private fun MediumPreview() {
     MovaraTheme {
         SelectedGenreScreen(
-            genreId = 28,
+            genreId = 35,
             movies = sampleMovies,
             onBack = {},
             onMovieClick = {}
@@ -243,10 +351,10 @@ private fun SelectedGenreMoviesPreview() {
     heightDp = 917
 )
 @Composable
-private fun SelectedGenreLoadingPreview() {
+private fun LoadingPreview() {
     MovaraTheme {
         SelectedGenreScreen(
-            genreId = 35,
+            genreId = 28,
             movies = emptyList(),
             isLoading = true,
             onBack = {},
@@ -262,16 +370,33 @@ private fun SelectedGenreLoadingPreview() {
     heightDp = 917
 )
 @Composable
-private fun SelectedGenreErrorPreview() {
+private fun ErrorPreview() {
     MovaraTheme {
         SelectedGenreScreen(
-            genreId = 18,
+            genreId = 28,
             movies = emptyList(),
             errorMessage = "Could not load movies.",
+            onRetry = {},
             onBack = {},
-            onMovieClick = {},
-            onRetry = {}
+            onMovieClick = {}
         )
     }
 }
 
+@Preview(
+    name = "Empty",
+    showBackground = true,
+    widthDp = 412,
+    heightDp = 917
+)
+@Composable
+private fun EmptyPreview() {
+    MovaraTheme {
+        SelectedGenreScreen(
+            genreId = 28,
+            movies = emptyList(),
+            onBack = {},
+            onMovieClick = {}
+        )
+    }
+}
