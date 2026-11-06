@@ -29,7 +29,8 @@ fun MovieActionButton(
     action: MovieAction,
     isSelected: Boolean,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true
 ) {
     val selectedColor: Color = when (action) {
         MovieAction.LIKE -> MovaraLiked
@@ -64,6 +65,7 @@ fun MovieActionButton(
 
     FilledTonalButton(
         onClick = onClick,
+        enabled = enabled,
         modifier = modifier.heightIn(min = 48.dp),
         shape = PillShape,
         contentPadding = PaddingValues(

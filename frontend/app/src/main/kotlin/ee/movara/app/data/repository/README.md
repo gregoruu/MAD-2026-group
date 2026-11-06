@@ -12,8 +12,23 @@ domain models and never use Retrofit or DAOs directly.
   and `observeMovies(listType)` expose flows of results containing domain movies.
   `observeCount` and `observeMembership` expose reactive counts and membership.
 - `saveMovie` upserts one list entry; `removeMovie` removes only that membership.
-  These operations do not implement the list business rules (#39) or Home
-  recommendation selection/filtering (#40).
+  Saving `WATCHED` inserts/updates it and removes `WATCH_LATER` in one Room
+  transaction. Liked membership is independent. Removing watched does not restore
+  Watch Later. Watch Later can explicitly be added again later.
+- `observeLists()` maps one Room query into a consistent `MovieLists` snapshot.
+  The navigation-scoped `MovieListsViewModel` shares it across Home, My Movies and
+  Movie Details. Buttons stay disabled while loading, after storage errors and
+  while a write for that movie is pending; failures never fake a changed selection.
+  The observed Room snapshot confirms each successful write before re-enabling actions.
+- Home filters watched IDs and duplicate movies from its trending candidates and
+  recomputes on list changes without another network request. The same filtering
+  must be retained when personal recommendation selection (#40) replaces trending.
+  Raw TMDB endpoints and their cached responses are not filtered or rewritten.
+
+The navigation screens provide the list-action integration for #39. They are not
+the complete screen designs for #32, #36 and #37. Search and Genres remain separate
+features, and undo snackbars belong to #44. Unlike, remove Watch Later and unmark
+Watched are supported directly by the toggled controls.
 
 `RepositoryResult.Success` carries `NETWORK`, `CACHE` or `LOCAL` source.
 TMDB successes include the last successful fetch time in epoch milliseconds.

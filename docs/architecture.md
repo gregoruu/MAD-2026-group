@@ -60,9 +60,13 @@ returning fresh data. A cache write failure keeps the fresh result usable and re
 cached results may be stale. Cancellation propagates normally.
 
 Saved-list observations, counts and membership are flows of results containing domain
-data. Save/remove operations delegate to the existing DAO. List business rules (#39),
-Home recommendation logic (#40), connectivity UI (#43) and image caching (#48) remain
-separate features.
+data. Saving a watched membership also removes Watch Later inside one DAO transaction;
+liked membership remains independent. `observeLists()` reads all memberships in one
+query, providing a consistent snapshot to the navigation-scoped `MovieListsViewModel`.
+Home, My Movies and Movie Details share that state and write through the repository.
+Home removes watched IDs from trending candidates and reacts to local list changes
+without refetching TMDB. Personal recommendation selection (#40), the complete screen
+designs, connectivity UI (#43) and image caching (#48) remain separate features.
 
 The endpoints, the failure behaviour and the logging rules are in
 [docs/api-docs.md](api-docs.md).

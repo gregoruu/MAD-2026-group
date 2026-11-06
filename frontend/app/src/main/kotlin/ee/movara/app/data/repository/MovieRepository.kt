@@ -4,6 +4,7 @@ import ee.movara.app.data.local.MovieListType
 import ee.movara.app.domain.model.Movie
 import ee.movara.app.domain.model.MovieDetails
 import ee.movara.app.domain.model.MoviePage
+import ee.movara.app.domain.model.MovieLists
 import kotlinx.coroutines.flow.Flow
 
 /** Shared movie access for Home, Search, Genres, Details and My Movies ViewModels. */
@@ -15,6 +16,7 @@ interface MovieRepository {
   suspend fun movieDetails(movieId: Int): RepositoryResult<MovieDetails>
 
   fun observeMovies(listType: MovieListType): Flow<RepositoryResult<List<Movie>>>
+  fun observeLists(): Flow<RepositoryResult<MovieLists>>
   fun observeLikedMovies() = observeMovies(MovieListType.LIKED)
   fun observeWatchLaterMovies() = observeMovies(MovieListType.WATCH_LATER)
   fun observeWatchedMovies() = observeMovies(MovieListType.WATCHED)

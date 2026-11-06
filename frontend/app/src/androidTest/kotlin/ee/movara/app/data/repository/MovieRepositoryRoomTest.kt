@@ -91,8 +91,7 @@ class MovieRepositoryRoomTest {
         assertTrue(repository.saveMovie(matrix, list) is RepositoryResult.Success)
       }
       assertEquals(listOf(matrix), (update.await() as RepositoryResult.Success).data)
-      assertEquals(listOf(matrix), (repository.observeWatchLaterMovies().first() as RepositoryResult.Success).data)
-      assertEquals(listOf(matrix), (repository.observeWatchedMovies().first() as RepositoryResult.Success).data)
+      assertEquals(emptyList<Movie>(), (repository.observeWatchLaterMovies().first() as RepositoryResult.Success).data)
       assertEquals(1, (repository.observeCount(MovieListType.LIKED).first() as RepositoryResult.Success).data)
       assertEquals(true, (repository.observeMembership(603, MovieListType.LIKED).first() as RepositoryResult.Success).data)
 
@@ -103,7 +102,7 @@ class MovieRepositoryRoomTest {
       assertEquals(false, (repository.observeMembership(603, MovieListType.LIKED).first() as RepositoryResult.Success).data)
       assertEquals(0, (repository.observeCount(MovieListType.LIKED).first() as RepositoryResult.Success).data)
       assertEquals(listOf(matrix), (repository.observeWatchedMovies().first() as RepositoryResult.Success).data)
-      assertEquals(listOf(matrix), (repository.observeWatchLaterMovies().first() as RepositoryResult.Success).data)
+      assertEquals(emptyList<Movie>(), (repository.observeWatchLaterMovies().first() as RepositoryResult.Success).data)
       // Saving a list entry must never add or replace a TMDB cache entry.
       assertNull(db.tmdbCacheDao().get("details:603"))
     } finally {
@@ -123,6 +122,8 @@ class MovieRepositoryRoomTest {
       val expectedDetails: Any?
       try {
         val repository = repository(api, first)
+        assertTrue(repository.saveMovie(Movie(603, "The Matrix", null, 1999), MovieListType.WATCHED)
+          is RepositoryResult.Success)
         expectedPage = (repository.trendingMovies() as RepositoryResult.Success).data
         expectedDetails = (repository.movieDetails(603) as RepositoryResult.Success).data
       } finally {
@@ -138,11 +139,133 @@ class MovieRepositoryRoomTest {
         assertEquals(expectedDetails, details.data)
         assertEquals(DataSource.CACHE, page.source)
         assertEquals(DataSource.CACHE, details.source)
+        val lists = (repository.observeLists().first() as RepositoryResult.Success).data
+        assertEquals(listOf(603), lists.watched.map { it.id })
+        assertTrue(lists.watchLater.isEmpty())
       } finally {
         reopened.close()
       }
     } finally {
       context.deleteDatabase(name)
+    }
+  }
+
+  @Test
+  fun markingWatchedRemovesWatchLaterButKeepsLiked() = runBlocking {
+    val db = Room.inMemoryDatabaseBuilder(
+      context,
+      MovaraDatabase::class.java
+    ).build()
+
+    try {
+      val repository = repository(FakeTmdbApiService(), db)
+      val movie = Movie(603, "The Matrix", "/matrix.jpg", 1999)
+
+      assertTrue(
+        repository.saveMovie(movie, MovieListType.LIKED)
+                is RepositoryResult.Success
+      )
+      assertTrue(
+        repository.saveMovie(movie, MovieListType.WATCH_LATER)
+                is RepositoryResult.Success
+      )
+
+      // Kontrollime, et Watch Lateri kirje oli enne olemas.
+      assertEquals(
+        listOf(movie),
+        (repository.observeWatchLaterMovies().first()
+                as RepositoryResult.Success).data
+      )
+
+      assertTrue(
+        repository.saveMovie(movie, MovieListType.WATCHED)
+                is RepositoryResult.Success
+      )
+
+      assertEquals(
+        emptyList<Movie>(),
+        (repository.observeWatchLaterMovies().first()
+                as RepositoryResult.Success).data
+      )
+      assertEquals(
+        listOf(movie),
+        (repository.observeWatchedMovies().first()
+                as RepositoryResult.Success).data
+      )
+      assertEquals(
+        listOf(movie),
+        (repository.observeLikedMovies().first()
+                as RepositoryResult.Success).data
+      )
+    } finally {
+      db.close()
+    }
+  }
+
+  @Test
+  fun unmarkingWatchedDoesNotRestoreWatchLater() = runBlocking {
+    val db = Room.inMemoryDatabaseBuilder(context, MovaraDatabase::class.java).build()
+    try {
+      val repository = repository(FakeTmdbApiService(), db)
+      val movie = Movie(603, "The Matrix", null, 1999)
+      assertTrue(repository.saveMovie(movie, MovieListType.WATCH_LATER) is RepositoryResult.Success)
+      assertTrue(repository.saveMovie(movie, MovieListType.WATCHED) is RepositoryResult.Success)
+      assertTrue(repository.removeMovie(movie.id, MovieListType.WATCHED) is RepositoryResult.Success)
+      val lists = (repository.observeLists().first() as RepositoryResult.Success).data
+      assertTrue(lists.watched.isEmpty())
+      assertTrue(lists.watchLater.isEmpty())
+      assertEquals(false, (repository.observeMembership(movie.id, MovieListType.WATCHED).first()
+        as RepositoryResult.Success).data)
+    } finally {
+      db.close()
+    }
+  }
+
+  @Test
+  fun listSnapshotsReactToWatchedTransaction() = runBlocking {
+    val db = Room.inMemoryDatabaseBuilder(context, MovaraDatabase::class.java).build()
+    try {
+      val repository = repository(FakeTmdbApiService(), db)
+      val movie = Movie(603, "The Matrix", null, 1999)
+      repository.saveMovie(movie, MovieListType.LIKED)
+      repository.saveMovie(movie, MovieListType.WATCH_LATER)
+      val update = async(Dispatchers.IO) {
+        withTimeout(10.seconds) {
+          repository.observeLists().filter {
+            it is RepositoryResult.Success && it.data.watched.isNotEmpty()
+          }.first() as RepositoryResult.Success
+        }
+      }
+      assertTrue(repository.saveMovie(movie, MovieListType.WATCHED) is RepositoryResult.Success)
+      val snapshot = update.await().data
+      assertEquals(listOf(movie), snapshot.liked)
+      assertEquals(listOf(movie), snapshot.watched)
+      assertTrue(snapshot.watchLater.isEmpty())
+    } finally {
+      db.close()
+    }
+  }
+
+  @Test
+  fun failedWatchLaterRemovalRollsBackWatchedInsert() = runBlocking(Dispatchers.IO) {
+    val db = Room.inMemoryDatabaseBuilder(context, MovaraDatabase::class.java).build()
+    try {
+      val repository = repository(FakeTmdbApiService(), db)
+      val movie = Movie(603, "The Matrix", null, 1999)
+      repository.saveMovie(movie, MovieListType.WATCH_LATER)
+      // Force the second operation to fail, proving the first is rolled back too.
+      db.openHelper.writableDatabase.execSQL("""
+        CREATE TRIGGER reject_watch_later_removal BEFORE DELETE ON saved_movie
+        WHEN OLD.listType = 'WATCH_LATER'
+        BEGIN SELECT RAISE(ABORT, 'test failure'); END
+      """.trimIndent())
+      val result = repository.saveMovie(movie, MovieListType.WATCHED) as RepositoryResult.Error
+      assertEquals(ErrorCategory.DATABASE, result.category)
+      val lists = (repository.observeLists().first() as RepositoryResult.Success).data
+      assertEquals(listOf(movie), lists.watchLater)
+      assertTrue(lists.watched.isEmpty())
+    } finally {
+      db.close()
     }
   }
 

@@ -237,6 +237,10 @@ class DefaultMovieRepositoryTest {
 
   private class FakeSavedMovieDao : SavedMovieDao {
     var failure: Exception? = null
+    override fun observeAllMovies(): Flow<List<SavedMovieEntity>> = flow {
+      failure?.let { throw it }
+      emit(emptyList())
+    }
     override fun observeMovies(listType: MovieListType): Flow<List<SavedMovieEntity>> = flow {
       failure?.let { throw it }
       emit(emptyList())

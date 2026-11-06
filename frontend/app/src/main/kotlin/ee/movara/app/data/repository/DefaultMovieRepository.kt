@@ -14,6 +14,7 @@ import ee.movara.app.data.remote.toDomainOrNull
 import ee.movara.app.domain.model.Movie
 import ee.movara.app.domain.model.MovieDetails
 import ee.movara.app.domain.model.MoviePage
+import ee.movara.app.domain.model.MovieLists
 import java.io.IOException
 import java.util.Locale
 import kotlinx.coroutines.CancellationException
@@ -132,6 +133,19 @@ class DefaultMovieRepository(
     RepositoryResult.Success(data, DataSource.NETWORK, fetchedAt, persisted)
   }
 
+  override fun observeLists(): Flow<RepositoryResult<MovieLists>> = observeLocal {
+    savedMovies.observeAllMovies().map { entries ->
+      fun movies(type: MovieListType) = entries.filter { it.listType == type }.map {
+        Movie(it.tmdbId, it.title, it.posterPath, it.year)
+      }
+      MovieLists(
+        liked = movies(MovieListType.LIKED),
+        watchLater = movies(MovieListType.WATCH_LATER),
+        watched = movies(MovieListType.WATCHED)
+      )
+    }
+  }
+
   override fun observeMovies(listType: MovieListType): Flow<RepositoryResult<List<Movie>>> =
     observeLocal {
       savedMovies.observeMovies(listType).map { entries ->
@@ -161,11 +175,20 @@ class DefaultMovieRepository(
   override suspend fun saveMovie(movie: Movie, listType: MovieListType): RepositoryResult<Unit> {
     if (movie.id <= 0 || movie.title.isBlank()) return invalidInput()
     return writeLocal {
-      savedMovies.upsert(
-        SavedMovieEntity(
-          movie.id, movie.title, movie.posterPath, movie.releaseYear, listType, now()
-        )
+      val entity = SavedMovieEntity(
+        tmdbId = movie.id,
+        title = movie.title,
+        posterPath = movie.posterPath,
+        year = movie.releaseYear,
+        listType = listType,
+        addedAt = now()
       )
+
+      if (listType == MovieListType.WATCHED) {
+        savedMovies.markWatched(entity)
+      } else {
+        savedMovies.upsert(entity)
+      }
     }
   }
 

@@ -39,6 +39,16 @@ import androidx.compose.ui.graphics.Color
 import ee.movara.app.ui.about.AboutScreen
 import androidx.compose.material3.IconButton
 import androidx.compose.ui.res.stringResource
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.toRoute
+import ee.movara.app.ui.home.HomeViewModel
+import ee.movara.app.ui.moviedetails.MovieDetailsViewModel
+import ee.movara.app.ui.movies.MovieListsViewModel
+import ee.movara.app.ui.movies.HomeMoviesScreen
+import ee.movara.app.ui.movies.SavedMoviesScreen
+import ee.movara.app.ui.movies.MovieDetailsActionsScreen
 
 // Main navigation structure of application.
 // Defines the three primary destinations: Home, Genres and My Movies.
@@ -46,6 +56,8 @@ import androidx.compose.ui.res.stringResource
 @Composable
 fun MainNavigation(container: AppContainer) {
   val navController = rememberNavController()
+  val movieLists: MovieListsViewModel = viewModel { MovieListsViewModel(container.movieRepository) }
+  val listsState by movieLists.uiState.collectAsStateWithLifecycle()
   val currentDestination =
     navController.currentBackStackEntryAsState().value?.destination
 
@@ -94,21 +106,19 @@ fun MainNavigation(container: AppContainer) {
     ) {
 
       composable<HomeRoute> {
-        Column(
-          modifier = Modifier.fillMaxSize(),
-          horizontalAlignment = Alignment.CenterHorizontally,
-          verticalArrangement = Arrangement.Center
-        ) {
-          Text("Home", fontSize = 26.sp)
-
-          Button(
-            onClick = {
-              navController.navigate(SearchRoute)
-            }
-          ) {
-            Text("Open Search")
+        val home: HomeViewModel = viewModel { HomeViewModel(container.movieRepository, movieLists.uiState) }
+        val state by home.uiState.collectAsStateWithLifecycle()
+        HomeMoviesScreen(
+          state = state,
+          lists = listsState,
+          onMembershipChange = movieLists::setMembership,
+          onOpenMovie = { navController.navigate(MovieDetailsRoute(it)) },
+          onSearch = { navController.navigate(SearchRoute) },
+          onRetry = {
+            if (listsState.storageError != null) movieLists.retry()
+            home.refresh()
           }
-        }
+        )
       }
 
       composable<SearchRoute> {
@@ -149,32 +159,13 @@ fun MainNavigation(container: AppContainer) {
 
 
       composable<MyMoviesRoute> {
-        Box(
-          modifier = Modifier.fillMaxSize()
-        ) {
-          // Info button opens the About screen.
-          IconButton(
-            onClick = {
-              navController.navigate(AboutRoute)
-            },
-            modifier = Modifier
-              .align(Alignment.TopEnd)
-              .padding(8.dp)
-              .size(48.dp)
-          ) {
-            Icon(
-              painter = painterResource(R.drawable.ic_ui_info),
-              contentDescription = stringResource(R.string.about_open),
-              tint = MovaraGold
-            )
-          }
-
-          Text(
-            text = "My Movies",
-            fontSize = 26.sp,
-            modifier = Modifier.align(Alignment.Center)
-          )
-        }
+        SavedMoviesScreen(
+          state = listsState,
+          onMembershipChange = movieLists::setMembership,
+          onOpenMovie = { navController.navigate(MovieDetailsRoute(it)) },
+          onAbout = { navController.navigate(AboutRoute) },
+          onRetry = movieLists::retry
+        )
       }
 
 
@@ -202,20 +193,20 @@ fun MainNavigation(container: AppContainer) {
         }
       }
 
-      composable<MovieDetailsRoute> {
-        Column(
-          modifier = Modifier.fillMaxSize(),
-          horizontalAlignment = Alignment.CenterHorizontally,
-          verticalArrangement = Arrangement.Center
-        ) {
-          Text("Movie Details", fontSize = 26.sp)
-
-          Button(
-            onClick = { navController.popBackStack() }
-          ) {
-            Text("Back")
-          }
+      composable<MovieDetailsRoute> { entry ->
+        val movieId = entry.toRoute<MovieDetailsRoute>().movieId
+        val details: MovieDetailsViewModel = viewModel {
+          MovieDetailsViewModel(container.movieRepository, movieId)
         }
+        val state by details.uiState.collectAsStateWithLifecycle()
+        MovieDetailsActionsScreen(
+          state = state,
+          lists = listsState,
+          onMembershipChange = movieLists::setMembership,
+          onBack = { navController.popBackStack() },
+          onRetry = details::refresh,
+          onRetryLists = movieLists::retry
+        )
       }
 
 
