@@ -8,6 +8,8 @@ import ee.movara.app.data.remote.createTmdbApiService
 import ee.movara.app.data.remote.createTmdbOkHttpClient
 import ee.movara.app.data.repository.DataRepository
 import ee.movara.app.data.repository.DefaultDataRepository
+import ee.movara.app.data.repository.DefaultMovieRepository
+import ee.movara.app.data.repository.MovieRepository
 import okhttp3.OkHttpClient
 
 /** Application-scoped dependencies. Screens receive repositories through their ViewModels. */
@@ -18,7 +20,7 @@ class AppContainer(private val context: Context) {
       context.applicationContext,
       MovaraDatabase::class.java,
       "movara.db"
-    ).build()
+    ).addMigrations(MovaraDatabase.MIGRATION_1_2).build()
   }
 
   /** The one HTTP client of the app. Everything that talks to TMDB shares it. */
@@ -30,6 +32,10 @@ class AppContainer(private val context: Context) {
   }
 
   val tmdbApiService: TmdbApiService by lazy { createTmdbApiService(okHttpClient) }
+
+  val movieRepository: MovieRepository by lazy {
+    DefaultMovieRepository(tmdbApiService, database.tmdbCacheDao(), database.savedMovieDao())
+  }
 
   val dataRepository: DataRepository by lazy { DefaultDataRepository() }
 }

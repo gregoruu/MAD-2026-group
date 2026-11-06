@@ -55,10 +55,35 @@ Every function suspends and returns a parsed response. A request that fails thro
 unknown movie), `java.io.IOException` when the phone is offline or TMDB does not answer, and
 `kotlinx.serialization.SerializationException` for a response that cannot be parsed.
 
-Callers above the data layer never see those exceptions. The repository catches them and
-turns them into state the screen can render.
+Callers above the data layer use `MovieRepository` and never see those exceptions.
+`RepositoryResult.Error` contains a safe message, category (invalid input, network,
+HTTP, invalid response, database or unexpected failure) and optional HTTP status.
+Coroutine cancellation is rethrown. Blank search queries and non-positive IDs/pages
+return an input error without calling TMDB.
 
-Responses with missing fields do not throw; `TmdbMappers.kt` drops what it cannot use.
+Successful results contain domain models, pagination metadata for lists, a source
+(`NETWORK` / `CACHE` / `LOCAL`) and, for TMDB data, the last successful fetch timestamp.
+Each request attempts TMDB once. Validated successful DTOs are serialized into Room's
+`tmdb_cache` table before returning fresh data. A storage write failure returns usable
+network data with `cachePersisted = false`.
+
+Offline/timeouts, HTTP 408/429/5xx, serialization failures and unusable responses try
+the matching persistent cache entry. Valid cached data returns `Success(source = CACHE)`;
+its timestamp remains unchanged, so the UI can identify stale content. Missing or corrupt
+cache data returns an error. Other HTTP failures, such as 401/403/404, remain errors.
+Failed requests do not overwrite successful entries. There is no automatic retry,
+expiry or eviction.
+
+Cache keys distinguish endpoint, query/IDs and page, for example `search:interstellar:1`,
+`trending:1`, `recommendations:603:1`, `genre:28:2` and `details:603`.
+Search queries are trimmed, whitespace collapsed and lowercased with Locale.ROOT for
+both the key and request. Cached responses survive app restarts, independently of
+the user's saved lists. Images are outside this cache (#48).
+
+Responses with missing optional fields use the existing `TmdbMappers.kt` behavior.
+Unusable cards are dropped; a wholly unusable nonempty page, invalid pagination,
+or details without the requested ID and a usable title is treated as an invalid response.
+An empty valid page is a successful response and can be cached.
 
 ## Logging
 
