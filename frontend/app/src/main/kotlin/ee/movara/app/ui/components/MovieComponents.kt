@@ -23,6 +23,7 @@ import ee.movara.app.R
 import ee.movara.app.domain.model.Genre
 import ee.movara.app.domain.model.Movie
 import ee.movara.app.ui.theme.*
+import androidx.compose.foundation.Image
 
 //Converts a TMDB poster path into a complete image URL.
 private fun posterUrl(path: String, size: String): String {
@@ -216,16 +217,20 @@ fun SpotlightCard(
 }
 
 // GenreTile: 112 dp high
+
 @Composable
 fun GenreTile(
     genre: Genre,
     imageUrl: String?,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    imageRes: Int? = null
 ) {
     Card(
         onClick = onClick,
-        modifier = modifier.fillMaxWidth().height(112.dp),
+        modifier = modifier
+            .fillMaxWidth()
+            .height(112.dp),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
             containerColor = MovaraSurface
@@ -236,22 +241,37 @@ fun GenreTile(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.BottomStart
         ) {
-            if (!imageUrl.isNullOrBlank()) {
-                AsyncImage(
-                    model = imageUrl,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.matchParentSize()
-                )
+            // Prefer local images so genre tiles also work offline.
+            when {
+                imageRes != null -> {
+                    Image(
+                        painter = painterResource(imageRes),
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.matchParentSize()
+                    )
+                }
+
+                !imageUrl.isNullOrBlank() -> {
+                    AsyncImage(
+                        model = imageUrl,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.matchParentSize()
+                    )
+                }
             }
 
+            // Dark overlay keeps the genre name readable.
             Box(
-                Modifier.matchParentSize().background(
-                    Brush.verticalGradient(
-                        0f to MovaraBackground.copy(alpha = 0.10f),
-                        1f to MovaraBackground.copy(alpha = 0.85f)
+                Modifier
+                    .matchParentSize()
+                    .background(
+                        Brush.verticalGradient(
+                            0f to MovaraBackground.copy(alpha = 0.10f),
+                            1f to MovaraBackground.copy(alpha = 0.85f)
+                        )
                     )
-                )
             )
 
             Text(

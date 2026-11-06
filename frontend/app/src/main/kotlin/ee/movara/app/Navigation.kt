@@ -39,6 +39,7 @@ import androidx.compose.ui.graphics.Color
 import ee.movara.app.ui.about.AboutScreen
 import androidx.compose.material3.IconButton
 import androidx.compose.ui.res.stringResource
+import ee.movara.app.ui.genres.GenresScreen
 
 // Main navigation structure of application.
 // Defines the three primary destinations: Home, Genres and My Movies.
@@ -130,23 +131,14 @@ fun MainNavigation(container: AppContainer) {
       }
 
       composable<GenresRoute> {
-        Column(
-          modifier = Modifier.fillMaxSize(),
-          horizontalAlignment = Alignment.CenterHorizontally,
-          verticalArrangement = Arrangement.Center
-        ) {
-          Text("Genres", fontSize = 26.sp)
-
-          Button(
-            onClick = {
-              navController.navigate(SelectedGenreRoute(28))
-            }
-          ) {
-            Text("Open Action genre")
+        GenresScreen(
+          onGenreClick = { genreId ->
+            navController.navigate(
+              SelectedGenreRoute(genreId)
+            )
           }
-        }
+        )
       }
-
 
       composable<MyMoviesRoute> {
         Box(
