@@ -59,7 +59,7 @@ fun GenresScreen(
             // Required screen heading
             Text(
                 text = "Genres",
-                style = MaterialTheme.typography.headlineMedium,
+                style = MaterialTheme.typography.displayMedium,
                 color = MovaraText
             )
 

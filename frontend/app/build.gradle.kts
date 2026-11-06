@@ -176,6 +176,8 @@ android {
     shaders = false
   }
 
+  sourceSets.getByName("androidTest").assets.directories.add("$projectDir/schemas")
+
   packaging {
     resources {
       excludes += "/META-INF/{AL2.0,LGPL2.1}"
@@ -189,6 +191,38 @@ ksp {
 
 kotlin {
   jvmToolchain(17)
+}
+
+// The live TMDB tests are the only tests that go out to the network. They are off unless
+// somebody asks for them, so a plain `./gradlew test` does not depend on an internet
+// connection, on TMDB being up, or on the request quota of whoever is running it.
+//
+// Switch them on for one run with `-PrunLiveTmdbTests`, or with a RUN_LIVE_TMDB_TESTS
+// environment variable on a build server. Both are read through the provider API, so the
+// configuration cache notices when the value changes.
+fun isSwitchedOn(value: String?): Boolean {
+  if (value == null) {
+    return false
+  }
+  // A bare -PrunLiveTmdbTests has an empty value and means on.
+  if (value.isBlank()) {
+    return true
+  }
+  return value.trim().equals("true", ignoreCase = true)
+}
+
+val runLiveTmdbTests: Boolean =
+  isSwitchedOn(providers.gradleProperty("runLiveTmdbTests").orNull) ||
+    isSwitchedOn(providers.environmentVariable("RUN_LIVE_TMDB_TESTS").orNull)
+
+tasks.withType<Test>().configureEach {
+  systemProperty("movara.runLiveTmdbTests", runLiveTmdbTests.toString())
+
+  // A live run answers the question "does TMDB answer right now", and a cached result from
+  // an earlier run is not an answer to it.
+  if (runLiveTmdbTests) {
+    outputs.upToDateWhen { false }
+  }
 }
 
 // The warning lives in a task action, not at configuration time. A configuration-time

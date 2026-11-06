@@ -59,6 +59,21 @@ Rules for the key:
 - If a key does end up in a commit, treat it as leaked: revoke it in TMDB's settings and create a new one. Deleting the line in a later commit does not remove it from the Git history.
 - A build server has no `local.properties`. It supplies the key through a `TMDB_API_KEY` environment variable, which the build uses as a fallback.
 
+With a key configured you can check that TMDB answers, without starting the app:
+
+```
+./gradlew :app:testDebugUnitTest -PrunLiveTmdbTests --tests "*TmdbApiServiceLiveTest"
+```
+
+These tests call the real API and need internet access. They only run when you ask for them
+with `-PrunLiveTmdbTests` (a build server can use a `RUN_LIVE_TMDB_TESTS` environment
+variable instead); otherwise they are skipped, including when a key is configured. A plain
+`./gradlew test` therefore never depends on the network, on TMDB being up, or on your
+request quota. The rest of the test suite never touches the network either.
+
+With the switch on but no key configured, the live tests fail rather than skip: you asked
+for an answer from TMDB and the run cannot give you one.
+
 `BuildConfig.TMDB_API_KEY` is compiled into the APK, so it is readable by anyone who unpacks the build. This step keeps the key out of **source control**; it does not make the key secret from a user of the app. That is the expected trade-off for a TMDB client key.
 
 ## 4. Create and start an emulator

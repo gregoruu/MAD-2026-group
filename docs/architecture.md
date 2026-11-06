@@ -34,20 +34,56 @@ repositories inside screen composables or ViewModels. Add future services, datab
 and repositories to the container; Hilt can replace it if dependency wiring grows.
 
 `MainScreenViewModel` demonstrates the boundary using the starter
-`DataRepository`; it is a greeting stub, not the movie backend. Room is configured through AppContainer. The Retrofit service will be
-added with the network features. Mirror production packages under `src/test/kotlin`
+`DataRepository`; it is a greeting stub, not the movie backend. Room and the Retrofit
+service are configured through AppContainer. Mirror production packages under `src/test/kotlin`
 and `src/androidTest/kotlin`; use fake repository interfaces for ViewModel tests
 and pass plain state/data to screen UI tests and previews.
+
+## TMDB API
+
+Movie data comes from TMDB over Retrofit and OkHttp. `AppContainer` owns one HTTP client
+and one `TmdbApiService`; service functions are `suspend` functions that return parsed
+responses and throw on a failed request. The API key is added by an interceptor, not by
+the service functions, and HTTP logging follows `BuildConfig.ENABLE_HTTP_LOGGING`.
+
+All movie ViewModels share the `MovieRepository` interface through constructor injection.
+`AppContainer.movieRepository` owns one lazy `DefaultMovieRepository`, using the shared
+`TmdbApiService`, `TmdbCacheDao` and `SavedMovieDao`. The greeting demo is unchanged.
+Repositories map responses to domain models, with `MoviePage` retaining pagination metadata.
+ViewModels and screens do not see Retrofit types, Room entities or network exceptions.
+
+`RepositoryResult` represents success or a safe categorized error. Success identifies
+network, cache or local-list data; TMDB results include the last successful fetch time.
+The repository makes one network attempt and persists validated DTO responses before
+returning fresh data. A cache write failure keeps the fresh result usable and reports
+`cachePersisted = false`. Recoverable failures load the matching Room cache entry;
+cached results may be stale. Cancellation propagates normally.
+
+Saved-list observations, counts and membership are flows of results containing domain
+data. Save/remove operations delegate to the existing DAO. List business rules (#39),
+Home recommendation logic (#40), connectivity UI (#43) and image caching (#48) remain
+separate features.
+
+The endpoints, the failure behaviour and the logging rules are in
+[docs/api-docs.md](api-docs.md).
 
 ## Local database
 
 Movara stores the user's movie lists in the Room database `movara.db`.
-The initial database version is 1.
+The current database version is 2. The explicit `MIGRATION_1_2`, registered in
+AppContainer, adds `tmdb_cache` without changing existing saved movies or their index.
+There is no destructive fallback.
 
 The `saved_movie` table uses `(tmdbId, listType)` as its composite primary
 key, allowing a movie to belong to multiple lists independently.
 DAO queries expose Flow values, ordered by newest addition first,
 and provide a movie count for each list.
+
+The separate `tmdb_cache` table stores a request key, serialized TMDB DTO and successful
+fetch timestamp. Keys distinguish endpoints, normalized queries, movie/genre IDs and
+individual pages, including movie details. Failed requests do not replace successful
+entries; fallback reads and validates the persisted response. There is no expiry or
+automatic retry. This response cache never changes a user's saved-list memberships.
 
 Database schemas are exported to `frontend/app/schemas` and committed
 to version control.
@@ -58,6 +94,58 @@ migration fallback is not used because the lists contain user data.
 
 AppContainer owns the database instance. Repositories access DAOs;
 screens and ViewModels do not access the database directly.
+
+## Permissions and user accounts
+
+The app declares two Android platform permissions:
+
+| Permission | Purpose |
+| --- | --- |
+| `INTERNET` | Request movie metadata and poster images from TMDB |
+| `ACCESS_NETWORK_STATE` | Allow connectivity checks for offline handling |
+
+Both are normal, install-time permissions. No runtime permission dialog is needed.
+The app does not request access to the camera, microphone, location, contacts or
+shared storage. Room and the image cache use app-private storage without a storage
+permission. See [Android network permissions](https://developer.android.com/develop/connectivity/network-ops/connecting).
+Connectivity monitoring and offline UI are planned under issue #43.
+
+### Why there are no user accounts
+
+Stage 1 scoped Movara as a personal, local movie-list app. Liked, Watch Later and
+Watched entries belong to this installation and are stored in Room on the device.
+There is no registration, login, password storage or account-based synchronization.
+The app does not upload these lists or collect account details such as names,
+email addresses or passwords.
+
+TMDB supplies public movie data directly to the Android app. Film searches and
+movie requests still go to TMDB, which receives the requested data, the app's API
+key and normal network metadata such as the source IP address. The TMDB developer
+key authorizes API access; it is not a Movara user's login credential.
+
+### Uninstalling, backups and device changes
+
+Uninstalling the app or clearing its storage deletes the local Room database and
+its movie lists. Movara has no server copy, export or account recovery feature,
+so users should expect a fresh installation to start with empty lists.
+
+The manifest sets `allowBackup="false"` and `fullBackupContent="false"` to disable
+Android cloud backup and legacy full backup. For Android 12 and newer,
+`res/xml/data_extraction_rules.xml` also excludes the database directory from
+cloud backup and device-to-device transfer, including Room's journal files.
+These transfer rules are explicit because some manufacturers do not apply
+`allowBackup` to device-to-device migration. This is the app's configured policy;
+device-specific transfer behavior has not been verified on every manufacturer.
+See [Android backup and transfer rules](https://developer.android.com/identity/data/autobackup).
+
+### What adding accounts would require
+
+Accounts would require an authentication provider or backend, secure session
+handling, server-side storage tied to a verified user ID, and authorization that
+keeps each user's lists private. The repository would need local/remote
+synchronization with conflict resolution and a migration path for existing local
+lists. Privacy, retention and account/data deletion behavior would also need to be
+defined before shipping that feature. These changes are outside the scope of Stage 3.
 
 ## Decisions
 

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Same M silhouette as the foreground; transparent outside the mark. -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M32,74V34H42L54,52L66,34H76V74H65V53L54,69L43,53V74Z" />
+</vector>
