@@ -170,3 +170,20 @@ Live Edit requires API 30 or newer; the API 37 emulator meets this requirement. 
 - **`The release build is not signed` / you only get `app-release-unsigned.apk`:** none of the four `RELEASE_*` values are set. See section 6. Debug and staging builds do not need them, so this is expected unless you are preparing a shared build.
 - **`Release signing is incomplete` or `no keystore was found at …`:** some of the four values are set and some are not, or the path does not point at a file. The message names the resolved path and which values are blank. Note that a Windows path must use forward slashes — `local.properties` is read with `java.util.Properties`, which treats `\` as an escape character, so `C:\keys\movara.jks` silently becomes `C:keysmovara.jks`.
 - **Release build crashes where debug works:** only the release build shrinks code, so the cause is usually a missing R8 keep rule. Add it to `frontend/app/proguard-rules.pro` and say in a comment which library needs it.
+
+## Image loading
+
+Movie images use the shared TmdbImage component and an application-wide
+Coil ImageLoader with crossfade enabled.
+
+Cards and rows use w342, Spotlight uses w500, and Movie Details
+backgrounds should use w780.
+
+The Movie Details screen is not implemented yet; its w780 integration still
+needs to be completed under issue #36. Genre tiles share the same loading
+and error rendering while keeping their image URLs unchanged.
+
+Missing or failed images show a dark placeholder with a movie icon.
+The disk cache stores up to 100 MiB of images. Previously loaded images
+can appear offline while they remain cached. Movie metadata is not
+stored by this image cache.
