@@ -11,26 +11,28 @@ There are two environments:
 
 ## What the proxy forwards
 
-Only `GET` requests for the paths the app uses are forwarded to `https://api.themoviedb.org/3`:
+Only `GET` requests for the paths the app uses are forwarded to `https://api.themoviedb.org/3`. Each path accepts only its own query parameters, each at most once, and only with the values the app sends:
 
 | Path | Query parameters |
 | --- | --- |
-| `/search/movie` | `query`, `page` |
+| `/search/movie` | `query`: not blank, at most 100 characters; `page` |
 | `/trending/movie/week` | `page` |
 | `/movie/{id}/recommendations` | `page` |
-| `/discover/movie` | `sort_by`, `with_genres`, `page` |
-| `/movie/{id}` | `append_to_response` |
+| `/discover/movie` | `sort_by`: only `popularity.desc`; `with_genres`: one genre id; `page` |
+| `/movie/{id}` | `append_to_response`: only `credits` |
+
+`page` is a whole number from 1 to 500. `{id}` and a genre id are whole numbers of 1 to 9 digits without a leading zero.
 
 | Request | Answer |
 | --- | --- |
 | Allowed path and parameters | TMDB's status, body and `Content-Type` |
 | Any other path | `404` |
 | Any method other than `GET` | `405` |
-| A query parameter that is not in the table, including `api_key` | `400` |
+| A query parameter the path does not take (including `api_key`), a value outside its rule, or a parameter given twice | `400` |
 | The Worker has no `TMDB_API_KEY` secret | `500` |
 | TMDB cannot be reached | `502` |
 
-When the app starts using a new endpoint or parameter, add it to `ALLOWED_PATHS` or `ALLOWED_QUERY_PARAMETERS` in `src/index.ts` together with a test, and update the table above.
+When the app starts using a new endpoint, parameter or value, add it to `ENDPOINTS` in `src/index.ts` together with a test, and update the tables above. The search field in the app has to keep its input within the 100-character limit.
 
 ## 1. Install
 

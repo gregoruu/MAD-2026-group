@@ -94,6 +94,86 @@ describe("proxyRequest", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it("rejects a parameter on a path that does not take it", async () => {
+    const paths = [
+      "/search/movie?query=alien&append_to_response=credits",
+      "/trending/movie/week?query=alien",
+      "/movie/550/recommendations?with_genres=28",
+      "/discover/movie?query=alien",
+      "/movie/550?page=1",
+    ];
+    for (const path of paths) {
+      const fetchMock = mockTmdb(Response.json({}));
+      const response = await proxyRequest(new Request(PROXY_URL + path), API_KEY);
+      expect(response.status, path).toBe(400);
+      expect(fetchMock, path).not.toHaveBeenCalled();
+    }
+  });
+
+  it("rejects values the app does not send", async () => {
+    const tooLongQuery = "a".repeat(101);
+    const paths = [
+      "/movie/550?append_to_response=credits,videos",
+      "/movie/550?append_to_response=videos",
+      "/discover/movie?sort_by=vote_average.desc",
+      "/discover/movie?with_genres=28,12",
+      "/discover/movie?with_genres=abc",
+      "/trending/movie/week?page=0",
+      "/trending/movie/week?page=501",
+      "/trending/movie/week?page=-1",
+      "/trending/movie/week?page=1.5",
+      "/trending/movie/week?page=",
+      "/search/movie?query=",
+      "/search/movie?query=%20%20",
+      "/search/movie?query=" + tooLongQuery,
+    ];
+    for (const path of paths) {
+      const fetchMock = mockTmdb(Response.json({}));
+      const response = await proxyRequest(new Request(PROXY_URL + path), API_KEY);
+      expect(response.status, path).toBe(400);
+      expect(fetchMock, path).not.toHaveBeenCalled();
+    }
+  });
+
+  it("accepts the largest page and the longest query", async () => {
+    const longestQuery = "a".repeat(100);
+    const paths = ["/trending/movie/week?page=500", "/search/movie?query=" + longestQuery];
+    for (const path of paths) {
+      const fetchMock = mockTmdb(Response.json({}));
+      const response = await proxyRequest(new Request(PROXY_URL + path), API_KEY);
+      expect(response.status, path).toBe(200);
+      expect(fetchMock, path).toHaveBeenCalledTimes(1);
+    }
+  });
+
+  it("rejects a parameter given more than once", async () => {
+    const fetchMock = mockTmdb(Response.json({}));
+    const request = new Request(PROXY_URL + "/trending/movie/week?page=1&page=2");
+    const response = await proxyRequest(request, API_KEY);
+    expect(response.status).toBe(400);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects parameter names that every object inherits", async () => {
+    const names = ["constructor", "toString", "hasOwnProperty", "__proto__"];
+    for (const name of names) {
+      const fetchMock = mockTmdb(Response.json({}));
+      const response = await proxyRequest(new Request(PROXY_URL + "/movie/550?" + name + "=x"), API_KEY);
+      expect(response.status, name).toBe(400);
+      expect(fetchMock, name).not.toHaveBeenCalled();
+    }
+  });
+
+  it("rejects movie ids the app does not send", async () => {
+    const paths = ["/movie/0", "/movie/0550", "/movie/1234567890", "/movie/1234567890/recommendations"];
+    for (const path of paths) {
+      const fetchMock = mockTmdb(Response.json({}));
+      const response = await proxyRequest(new Request(PROXY_URL + path), API_KEY);
+      expect(response.status, path).toBe(404);
+      expect(fetchMock, path).not.toHaveBeenCalled();
+    }
+  });
+
   it("answers 500 without calling TMDB when the key is missing", async () => {
     const missingKeys = [undefined, ""];
     for (const missingKey of missingKeys) {

@@ -4,31 +4,80 @@ export interface Env {
 
 const TMDB_BASE_URL = "https://api.themoviedb.org/3";
 
-// Paths the proxy forwards, relative to the TMDB base URL.
-const ALLOWED_PATHS: RegExp[] = [
-  /^\/search\/movie$/,
-  /^\/trending\/movie\/week$/,
-  /^\/movie\/\d+\/recommendations$/,
-  /^\/discover\/movie$/,
-  /^\/movie\/\d+$/,
+const MAX_PAGE = 500;
+const MAX_QUERY_LENGTH = 100;
+
+type ValueCheck = (value: string) => boolean;
+
+interface Endpoint {
+  path: RegExp;
+  parameters: Map<string, ValueCheck>;
+}
+
+function isPage(value: string): boolean {
+  if (!/^[1-9]\d{0,2}$/.test(value)) {
+    return false;
+  }
+  return Number(value) <= MAX_PAGE;
+}
+
+function isGenreId(value: string): boolean {
+  return /^[1-9]\d{0,8}$/.test(value);
+}
+
+function isSearchQuery(value: string): boolean {
+  if (value.trim() === "") {
+    return false;
+  }
+  return value.length <= MAX_QUERY_LENGTH;
+}
+
+function isPopularityDescending(value: string): boolean {
+  return value === "popularity.desc";
+}
+
+function isCredits(value: string): boolean {
+  return value === "credits";
+}
+
+// Paths the proxy forwards, relative to the TMDB base URL, with the query parameters each one accepts.
+const ENDPOINTS: Endpoint[] = [
+  {
+    path: /^\/search\/movie$/,
+    parameters: new Map([
+      ["query", isSearchQuery],
+      ["page", isPage],
+    ]),
+  },
+  {
+    path: /^\/trending\/movie\/week$/,
+    parameters: new Map([["page", isPage]]),
+  },
+  {
+    path: /^\/movie\/[1-9]\d{0,8}\/recommendations$/,
+    parameters: new Map([["page", isPage]]),
+  },
+  {
+    path: /^\/discover\/movie$/,
+    parameters: new Map([
+      ["sort_by", isPopularityDescending],
+      ["with_genres", isGenreId],
+      ["page", isPage],
+    ]),
+  },
+  {
+    path: /^\/movie\/[1-9]\d{0,8}$/,
+    parameters: new Map([["append_to_response", isCredits]]),
+  },
 ];
 
-// Query parameters the proxy forwards.
-const ALLOWED_QUERY_PARAMETERS: string[] = [
-  "query",
-  "page",
-  "with_genres",
-  "sort_by",
-  "append_to_response",
-];
-
-function isAllowedPath(path: string): boolean {
-  for (const pattern of ALLOWED_PATHS) {
-    if (pattern.test(path)) {
-      return true;
+function findEndpoint(path: string): Endpoint | null {
+  for (const endpoint of ENDPOINTS) {
+    if (endpoint.path.test(path)) {
+      return endpoint;
     }
   }
-  return false;
+  return null;
 }
 
 function errorResponse(status: number, message: string): Response {
@@ -48,16 +97,24 @@ export async function proxyRequest(request: Request, apiKey: string | undefined)
   }
 
   const incomingUrl = new URL(request.url);
-  if (!isAllowedPath(incomingUrl.pathname)) {
+  const endpoint = findEndpoint(incomingUrl.pathname);
+  if (endpoint === null) {
     return errorResponse(404, "This path is not available through the proxy.");
   }
 
   const upstreamUrl = new URL(TMDB_BASE_URL + incomingUrl.pathname);
   for (const [name, value] of incomingUrl.searchParams) {
-    if (!ALLOWED_QUERY_PARAMETERS.includes(name)) {
-      return errorResponse(400, `Query parameter "${name}" is not allowed.`);
+    const check = endpoint.parameters.get(name);
+    if (check === undefined) {
+      return errorResponse(400, `Query parameter "${name}" is not allowed on this path.`);
     }
-    upstreamUrl.searchParams.append(name, value);
+    if (upstreamUrl.searchParams.has(name)) {
+      return errorResponse(400, `Query parameter "${name}" is given more than once.`);
+    }
+    if (!check(value)) {
+      return errorResponse(400, `Query parameter "${name}" has a value that is not allowed.`);
+    }
+    upstreamUrl.searchParams.set(name, value);
   }
   upstreamUrl.searchParams.set("api_key", apiKey);
 
