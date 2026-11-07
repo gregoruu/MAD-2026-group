@@ -187,3 +187,32 @@ Missing or failed images show a dark placeholder with a movie icon.
 The disk cache stores up to 100 MiB of images. Previously loaded images
 can appear offline while they remain cached. Movie metadata is not
 stored by this image cache.
+
+### Automated image tests
+
+Run the URL model tests and the existing unit suite with
+`./gradlew :app:testDebugUnitTest :app:lintDebug`.
+`TmdbImageModelTest` covers null/blank paths, trimming, relative paths,
+absolute URLs, and the w342/w500/w780 sizes.
+
+With an Android device or emulator connected, run:
+
+```sh
+./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=ee.movara.app.ui.components.MovieImageTest,ee.movara.app.ui.components.MovieImageCacheTest
+```
+
+The five UI tests cover missing paths without starting requests, malformed
+URLs, loading failures, model changes between error/loading/success, and an
+old request completing after the model changes. Controlled Coil interceptors
+hold requests in loading until each test releases them.
+
+The cache test uses the application's 100 MiB disk cache, real PNG decoding,
+and a controlled OkHttp transport. Memory caching is disabled. It verifies
+that the second request succeeds from disk without invoking the transport,
+which fails any subsequent network call. These tests need no TMDB key or
+external image server.
+
+The `Image loading tests` GitHub Actions workflow runs the unit suite, lint,
+and these six instrumented tests on pull requests and uploads their reports.
+Local results are separate from GitHub check results; a local successful run
+does not establish that a workflow has passed on GitHub.

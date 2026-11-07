@@ -14,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import coil3.compose.AsyncImagePainter
@@ -21,7 +22,8 @@ import ee.movara.app.R
 import ee.movara.app.ui.theme.MovaraSurfaceSecondary
 import ee.movara.app.ui.theme.MovaraTextSecondary
 
-private fun posterUrl(path: String, size: String): String {
+internal fun tmdbImageModel(path: String?, size: String = "w342"): String? {
+    val path = path?.trim()?.takeIf { it.isNotEmpty() } ?: return null
     if (path.startsWith("https://") || path.startsWith("http://")) {
         return path
     }
@@ -33,7 +35,7 @@ private fun posterUrl(path: String, size: String): String {
 @Composable
 private fun MissingPoster(modifier: Modifier = Modifier) {
     Box(
-        modifier = modifier.background(MovaraSurfaceSecondary),
+        modifier = modifier.background(MovaraSurfaceSecondary).testTag("movie_image_missing"),
         contentAlignment = Alignment.Center
     ) {
         Icon(
@@ -51,9 +53,8 @@ fun TmdbImage(
     modifier: Modifier = Modifier,
     size: String = "w342"
 ) {
-    val normalizedPath = path?.trim()?.takeIf { it.isNotEmpty() }
     MovieImage(
-        model = normalizedPath?.let { posterUrl(it, size) },
+        model = tmdbImageModel(path, size),
         modifier = modifier
     )
 }
@@ -85,7 +86,7 @@ internal fun MovieImage(
                 when (state) {
                     is AsyncImagePainter.State.Empty,
                     is AsyncImagePainter.State.Loading -> PulsingPlaceholder(
-                        modifier = Modifier.matchParentSize(),
+                        modifier = Modifier.matchParentSize().testTag("movie_image_loading"),
                         cornerRadius = 0.dp
                     )
                     is AsyncImagePainter.State.Error ->
