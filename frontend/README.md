@@ -212,7 +212,3 @@ that the second request succeeds from disk without invoking the transport,
 which fails any subsequent network call. These tests need no TMDB key or
 external image server.
 
-The `Image loading tests` GitHub Actions workflow runs the unit suite, lint,
-and these six instrumented tests on pull requests and uploads their reports.
-Local results are separate from GitHub check results; a local successful run
-does not establish that a workflow has passed on GitHub.
