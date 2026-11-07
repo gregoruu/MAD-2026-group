@@ -27,6 +27,9 @@ interface SavedMovieDao {
     )
     fun observeCount(listType: MovieListType): Flow<Int>
 
+    @Query("SELECT EXISTS(SELECT 1 FROM saved_movie WHERE tmdbId = :movieId AND listType = :listType)")
+    fun observeMembership(movieId: Int, listType: MovieListType): Flow<Boolean>
+
     @Upsert
     suspend fun upsert(movie: SavedMovieEntity)
 

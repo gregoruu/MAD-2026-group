@@ -37,6 +37,63 @@ import ee.movara.app.ui.theme.MovaraGold
 import ee.movara.app.ui.theme.MovaraSurface
 import ee.movara.app.ui.theme.MovaraText
 import ee.movara.app.ui.theme.MovaraTextSecondary
+import ee.movara.app.ui.theme.*
+import androidx.compose.foundation.Image
+
+//Converts a TMDB poster path into a complete image URL.
+private fun posterUrl(path: String, size: String): String {
+    if (path.startsWith("https://") || path.startsWith("http://")) {
+        return path
+    }
+    val normalized = if (path.startsWith("/")) path else "/$path"
+    return "https://image.tmdb.org/t/p/$size$normalized"
+}
+
+//Displays a fallback icon when a movie poster is missing or cannot be loaded.
+@Composable
+private fun MissingPoster(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier.background(MovaraSurfaceSecondary),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            painter = painterResource(R.drawable.ic_ui_movie),
+            contentDescription = null,
+            tint = MovaraTextSecondary,
+            modifier = Modifier.size(32.dp)
+        )
+    }
+}
+
+// Reusable poster image component.
+@Composable
+private fun PosterImage(
+    path: String?,
+    modifier: Modifier = Modifier,
+    size: String = "w342"
+) {
+    Box(modifier = modifier.background(MovaraSurfaceSecondary)) {
+        if (path.isNullOrBlank()) {
+            MissingPoster(Modifier.matchParentSize())
+        } else {
+            SubcomposeAsyncImage(
+                model = posterUrl(path, size),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.matchParentSize(),
+                loading = {
+                    PulsingPlaceholder(
+                        modifier = Modifier.fillMaxSize(),
+                        cornerRadius = 0.dp
+                    )
+                },
+                error = {
+                    MissingPoster(Modifier.fillMaxSize())
+                }
+            )
+        }
+    }
+}
 
 // MovieCard: 144 x 208 dp
 @Composable
@@ -176,16 +233,20 @@ fun SpotlightCard(
 }
 
 // GenreTile: 112 dp high
+
 @Composable
 fun GenreTile(
     genre: Genre,
     imageUrl: String?,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    imageRes: Int? = null
 ) {
     Card(
         onClick = onClick,
-        modifier = modifier.fillMaxWidth().height(112.dp),
+        modifier = modifier
+            .fillMaxWidth()
+            .height(112.dp),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
             containerColor = MovaraSurface
@@ -200,14 +261,37 @@ fun GenreTile(
                 model = imageUrl?.trim()?.takeIf { it.isNotEmpty() },
                 modifier = Modifier.matchParentSize()
             )
-
-            Box(
-                Modifier.matchParentSize().background(
-                    Brush.verticalGradient(
-                        0f to MovaraBackground.copy(alpha = 0.10f),
-                        1f to MovaraBackground.copy(alpha = 0.85f)
+            // Prefer local images so genre tiles also work offline.
+            when {
+                imageRes != null -> {
+                    Image(
+                        painter = painterResource(imageRes),
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.matchParentSize()
                     )
-                )
+                }
+
+                !imageUrl.isNullOrBlank() -> {
+                    AsyncImage(
+                        model = imageUrl,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.matchParentSize()
+                    )
+                }
+            }
+
+            // Dark overlay keeps the genre name readable.
+            Box(
+                Modifier
+                    .matchParentSize()
+                    .background(
+                        Brush.verticalGradient(
+                            0f to MovaraBackground.copy(alpha = 0.10f),
+                            1f to MovaraBackground.copy(alpha = 0.85f)
+                        )
+                    )
             )
 
             Text(
