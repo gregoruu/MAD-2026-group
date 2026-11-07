@@ -28,7 +28,11 @@ fun readSecret(name: String): String {
   return providers.environmentVariable(name).orNull.orEmpty().trim()
 }
 
-val tmdbApiKey: String = readSecret("TMDB_API_KEY")
+// The TMDB proxy in backend/. Debug and staging builds use its staging Worker, release
+// builds use its production Worker.
+val workersDevSubdomain = "movara"
+val stagingTmdbBaseUrl = "https://movara-tmdb-proxy-staging.$workersDevSubdomain.workers.dev/"
+val productionTmdbBaseUrl = "https://movara-tmdb-proxy-production.$workersDevSubdomain.workers.dev/"
 
 // Release signing. The keystore itself is never committed; *.jks and *.keystore are
 // ignored by Git. Only its location and passwords come from local.properties.
@@ -100,13 +104,6 @@ android {
     versionCode = 1
     versionName = "1.0"
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-
-    // buildConfigField writes the value straight into generated Java source,
-    // so the key is escaped and quoted here.
-    val escapedTmdbApiKey = tmdbApiKey
-      .replace("\\", "\\\\")
-      .replace("\"", "\\\"")
-    buildConfigField("String", "TMDB_API_KEY", "\"$escapedTmdbApiKey\"")
   }
 
   signingConfigs {
@@ -130,6 +127,7 @@ android {
   buildTypes {
     debug {
       buildConfigField("boolean", "ENABLE_HTTP_LOGGING", "true")
+      buildConfigField("String", "TMDB_BASE_URL", "\"$stagingTmdbBaseUrl\"")
     }
 
     // Staging is the build the team installs and tests, and the one issue #55 shares.
@@ -154,6 +152,7 @@ android {
       isShrinkResources = true
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
       buildConfigField("boolean", "ENABLE_HTTP_LOGGING", "true")
+      buildConfigField("String", "TMDB_BASE_URL", "\"$stagingTmdbBaseUrl\"")
     }
 
     release {
@@ -161,6 +160,7 @@ android {
       isMinifyEnabled = true
       isShrinkResources = true
       buildConfigField("boolean", "ENABLE_HTTP_LOGGING", "false")
+      buildConfigField("String", "TMDB_BASE_URL", "\"$productionTmdbBaseUrl\"")
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
       signingConfig = releaseSigningConfig
     }
@@ -223,25 +223,6 @@ tasks.withType<Test>().configureEach {
   if (runLiveTmdbTests) {
     outputs.upToDateWhen { false }
   }
-}
-
-// The warning lives in a task action, not at configuration time. A configuration-time
-// warning is only printed on the first build and is then swallowed by the configuration
-// cache, which would let a developer believe the key is configured when it is not.
-val warnAboutMissingTmdbApiKey = tasks.register("warnAboutMissingTmdbApiKey") {
-  val keyIsMissing = tmdbApiKey.isEmpty()
-  doLast {
-    if (keyIsMissing) {
-      logger.warn(
-        "TMDB_API_KEY is not set. Add it to local.properties at the repository root " +
-          "(see frontend/README.md). Requests to TMDB will fail without it."
-      )
-    }
-  }
-}
-
-tasks.named("preBuild") {
-  dependsOn(warnAboutMissingTmdbApiKey)
 }
 
 // Only release builds care about the keystore, so this check is not attached to preBuild.

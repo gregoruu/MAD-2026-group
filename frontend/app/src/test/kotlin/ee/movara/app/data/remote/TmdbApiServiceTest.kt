@@ -10,15 +10,12 @@ import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import org.junit.After
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import retrofit2.HttpException
-
-private const val TEST_API_KEY = "test-api-key"
 
 private const val EMPTY_PAGE = """{ "page": 1, "results": [], "total_pages": 0, "total_results": 0 }"""
 
@@ -37,7 +34,7 @@ class TmdbApiServiceTest {
   fun setUp() {
     server = MockWebServer()
     server.start()
-    service = serviceFor(createTmdbOkHttpClient(TEST_API_KEY, enableHttpLogging = false))
+    service = serviceFor(createTmdbOkHttpClient(enableHttpLogging = false))
   }
 
   @After
@@ -155,7 +152,7 @@ class TmdbApiServiceTest {
   }
 
   @Test
-  fun everyRequest_carriesTheApiKey() = runTest {
+  fun everyRequest_carriesNoApiKey() = runTest {
     for (index in 1..4) {
       server.enqueue(MockResponse(code = 200, body = EMPTY_PAGE))
     }
@@ -172,7 +169,7 @@ class TmdbApiServiceTest {
       requests.add(server.takeRequest())
     }
     for (request in requests) {
-      assertEquals(request.url.encodedPath, TEST_API_KEY, request.url.queryParameter("api_key"))
+      assertNull(request.url.encodedPath, request.url.queryParameter("api_key"))
     }
   }
 
@@ -203,7 +200,7 @@ class TmdbApiServiceTest {
     val unreachableUrl = unreachableServer.url("/").toString()
     unreachableServer.close()
     val serviceOnAClosedPort = createTmdbApiService(
-      createTmdbOkHttpClient(TEST_API_KEY, enableHttpLogging = false),
+      createTmdbOkHttpClient(enableHttpLogging = false),
       unreachableUrl
     )
 
@@ -233,31 +230,30 @@ class TmdbApiServiceTest {
 
   @Test
   fun client_hasNoLoggingInterceptorWhenLoggingIsOff() {
-    val client = createTmdbOkHttpClient(TEST_API_KEY, enableHttpLogging = false)
+    val client = createTmdbOkHttpClient(enableHttpLogging = false)
 
     assertNull(loggingInterceptorOf(client))
   }
 
   @Test
   fun client_hasALoggingInterceptorWhenLoggingIsOn() {
-    val client = createTmdbOkHttpClient(TEST_API_KEY, enableHttpLogging = true)
+    val client = createTmdbOkHttpClient(enableHttpLogging = true)
 
     assertNotNull(loggingInterceptorOf(client))
   }
 
   @Test
-  fun httpLogging_logsTheRequestWithoutTheApiKey() = runTest {
+  fun httpLogging_logsTheRequest() = runTest {
     server.enqueue(MockResponse(code = 200, body = EMPTY_PAGE))
     val logger = RecordingLogger()
     val loggingService = serviceFor(
-      createTmdbOkHttpClient(TEST_API_KEY, enableHttpLogging = true, httpLogger = logger)
+      createTmdbOkHttpClient(enableHttpLogging = true, httpLogger = logger)
     )
 
     loggingService.searchMovies(title = "matrix", page = 1)
 
     val log = logger.lines.joinToString(separator = "\n")
     assertTrue(log, log.contains("/search/movie"))
-    assertFalse(log, log.contains(TEST_API_KEY))
   }
 
   private fun serviceFor(client: OkHttpClient): TmdbApiService {
