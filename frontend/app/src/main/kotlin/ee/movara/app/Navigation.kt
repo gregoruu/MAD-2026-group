@@ -42,7 +42,7 @@ import androidx.compose.ui.res.stringResource
 import ee.movara.app.ui.genres.GenresScreen
 import androidx.navigation.toRoute
 import ee.movara.app.ui.selectedgenre.SelectedGenreScreen
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ee.movara.app.ui.selectedgenre.SelectedGenreViewModel
 import ee.movara.app.ui.selectedgenre.SelectedGenreViewModelFactory
@@ -189,7 +189,7 @@ fun MainNavigation(container: AppContainer) {
 
         // Observe changes in loading
         val uiState = selectedGenreViewModel.uiState
-          .collectAsState().value
+          .collectAsStateWithLifecycle().value
 
         SelectedGenreScreen(
           genreId = route.genreId,

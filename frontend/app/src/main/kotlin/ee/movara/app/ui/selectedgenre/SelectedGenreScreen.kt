@@ -21,20 +21,9 @@ import ee.movara.app.ui.components.MovieCard
 import ee.movara.app.ui.components.PulsingPlaceholder
 import ee.movara.app.ui.theme.*
 import kotlinx.coroutines.flow.first
+import ee.movara.app.domain.model.GenreCatalog
+import androidx.compose.ui.res.stringResource
 
-private fun genreName(genreId: Int): String = when (genreId) {
-    28 -> "Action"
-    18 -> "Drama"
-    878 -> "Sci-Fi"
-    53 -> "Thriller"
-    27 -> "Horror"
-    35 -> "Comedy"
-    10749 -> "Romance"
-    80 -> "Crime"
-    16 -> "Animation"
-    99 -> "Documentary"
-    else -> "Movies"
-}
 
 // displays movies belonging to the selected genre
 @Composable
@@ -84,13 +73,13 @@ fun SelectedGenreScreen(
                 Spacer(Modifier.width(8.dp))
 
                 Text(
-                    text = "All Genres",
+                    text = stringResource(R.string.selected_genre_back),
                     color = MovaraText
                 )
             }
 
             Text(
-                text = genreName(genreId),
+                text = GenreCatalog.nameForId(genreId),
                 style = MaterialTheme.typography.displayMedium,
                 color = MovaraGold,
                 modifier = Modifier.padding(
@@ -150,7 +139,9 @@ fun SelectedGenreScreen(
                             Spacer(Modifier.height(16.dp))
 
                             Button(onClick = onRetry) {
-                                Text("Try again")
+                                Text(
+                                    text = stringResource(R.string.selected_genre_retry)
+                                )
                             }
                         }
                     }
@@ -165,10 +156,9 @@ fun SelectedGenreScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "No movies found for this genre.",
+                            text = stringResource(R.string.selected_genre_empty),
                             color = MovaraTextSecondary,
-                            style =
-                                MaterialTheme.typography.bodyLarge
+                            style = MaterialTheme.typography.bodyLarge
                         )
                     }
                 }
@@ -264,7 +254,9 @@ fun SelectedGenreScreen(
                                         TextButton(
                                             onClick = onRetry
                                         ) {
-                                            Text("Try again")
+                                            Text(
+                                                text = stringResource(R.string.selected_genre_retry)
+                                            )
                                         }
                                     }
                                 }

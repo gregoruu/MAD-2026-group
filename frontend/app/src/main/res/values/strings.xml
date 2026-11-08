@@ -46,4 +46,8 @@
     <string name="about_logo_title">TMDB Logo</string>
     <string name="about_logo_description">Official TMDB branding</string>
     <string name="about_logo_link">TMDB logos and attribution</string>
+
+    <string name="selected_genre_back">All Genres</string>
+    <string name="selected_genre_retry">Try again</string>
+    <string name="selected_genre_empty">No movies found for this genre.</string>
 </resources>
