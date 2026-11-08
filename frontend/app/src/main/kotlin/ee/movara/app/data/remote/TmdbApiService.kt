@@ -10,8 +10,8 @@ import retrofit2.http.Query
  * Every function suspends and returns a parsed response. A request that fails, or that TMDB
  * answers with a non-2xx status, throws; the repository turns that into screen state.
  *
- * Paths are relative to [TMDB_BASE_URL] and carry no API key. [TmdbApiKeyInterceptor] adds
- * the key to every request.
+ * Paths are relative to the base URL given to [createTmdbApiService]. Requests carry no API
+ * key.
  *
  * TMDB pages are 20 movies long and [MoviePageDto] reports how many pages exist.
  */

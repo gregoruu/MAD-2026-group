@@ -3,9 +3,24 @@ package ee.movara.app.ui.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -22,8 +37,15 @@ import coil3.compose.SubcomposeAsyncImage
 import ee.movara.app.R
 import ee.movara.app.domain.model.Genre
 import ee.movara.app.domain.model.Movie
+import ee.movara.app.ui.theme.MovaraBackground
+import ee.movara.app.ui.theme.MovaraBorder
+import ee.movara.app.ui.theme.MovaraGold
+import ee.movara.app.ui.theme.MovaraSurface
+import ee.movara.app.ui.theme.MovaraText
+import ee.movara.app.ui.theme.MovaraTextSecondary
 import ee.movara.app.ui.theme.*
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.aspectRatio
 
 //Converts a TMDB poster path into a complete image URL
 private fun posterUrl(path: String, size: String): String {
@@ -107,9 +129,10 @@ fun MovieCard(
         border = BorderStroke(1.dp, MovaraBorder)
     ) {
         Box(Modifier.fillMaxSize()) {
-            PosterImage(
+            TmdbImage(
                 movie.posterPath,
-                modifier = Modifier.matchParentSize()
+                modifier = Modifier.matchParentSize(),
+                size = "w342"
             )
 
             Box(
@@ -169,7 +192,7 @@ fun SpotlightCard(
         border = BorderStroke(1.dp, MovaraBorder)
     ) {
         Box(Modifier.fillMaxSize()) {
-            PosterImage(
+            TmdbImage(
                 movie.posterPath,
                 modifier = Modifier.matchParentSize(),
                 size = "w500"
@@ -251,7 +274,7 @@ fun GenreTile(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.BottomStart
         ) {
-            // Prefer local images so genre tiles also work offline
+// Prefer local images so genre tiles also work offline.
             when {
                 imageRes != null -> {
                     Image(
@@ -263,10 +286,8 @@ fun GenreTile(
                 }
 
                 !imageUrl.isNullOrBlank() -> {
-                    AsyncImage(
-                        model = imageUrl,
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
+                    MovieImage(
+                        model = imageUrl.trim(),
                         modifier = Modifier.matchParentSize()
                     )
                 }
@@ -314,12 +335,13 @@ fun MovieRow(
         border = BorderStroke(1.dp, MovaraBorder)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            PosterImage(
+            TmdbImage(
                 movie.posterPath,
                 modifier = Modifier.size(
                     width = 64.dp,
                     height = 96.dp
-                )
+                ),
+                size = "w342"
             )
 
             Spacer(Modifier.width(12.dp))
