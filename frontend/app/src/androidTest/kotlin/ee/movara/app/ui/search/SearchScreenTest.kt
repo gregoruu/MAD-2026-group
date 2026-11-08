@@ -1,5 +1,6 @@
 package ee.movara.app.ui.search
 
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -52,6 +53,41 @@ class SearchScreenTest {
       }
     }
     compose.onNodeWithText("Enter a movie title").assertIsDisplayed()
+  }
+
+  @Test fun noResultsMessageAppearsOnlyAfterSuccessfulEmptySearch() {
+    val state = mutableStateOf(SearchUiState())
+    compose.setContent {
+      MovaraTheme {
+        SearchScreen(
+          state = state.value,
+          onQueryChange = {},
+          onSearch = {},
+          onLoadMore = {},
+          onRetry = {},
+          onMovieClick = {},
+          onBack = {}
+        )
+      }
+    }
+    compose.onNodeWithText("No movies found.").assertDoesNotExist()
+
+    compose.runOnIdle {
+      state.value = SearchUiState(query = "Unknown", isLoading = true)
+    }
+    compose.onNodeWithContentDescription("Searching…").assertIsDisplayed()
+    compose.onNodeWithText("No movies found.").assertDoesNotExist()
+
+    compose.runOnIdle {
+      state.value = SearchUiState(query = "Unknown", requestError = "Network error")
+    }
+    compose.onNodeWithText("Network error").assertIsDisplayed()
+    compose.onNodeWithText("No movies found.").assertDoesNotExist()
+
+    compose.runOnIdle {
+      state.value = SearchUiState(query = "Unknown", page = 1)
+    }
+    compose.onNodeWithText("No movies found.").assertIsDisplayed()
   }
 
   @Test fun clearButtonSendsEmptyQuery() {

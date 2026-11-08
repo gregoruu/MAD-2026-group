@@ -26,10 +26,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
@@ -37,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import ee.movara.app.R
 import ee.movara.app.domain.model.Movie
 import ee.movara.app.ui.components.MovieSearchField
+import ee.movara.app.ui.components.PulsingPlaceholder
 import ee.movara.app.ui.components.TmdbImage
 import ee.movara.app.ui.theme.MovaraBackground
 import ee.movara.app.ui.theme.MovaraGold
@@ -56,6 +59,10 @@ fun SearchScreen(
 ) {
   val keyboard = LocalSoftwareKeyboardController.current
   val gridState = rememberLazyGridState()
+  val isMediumOrWider = LocalConfiguration.current.screenWidthDp >= 600
+  val columnCount = if (isMediumOrWider) 5 else 3
+  val screenMargin = if (isMediumOrWider) 24.dp else 20.dp
+  val loadingDescription = stringResource(R.string.search_loading)
   LaunchedEffect(state.query) {
     gridState.scrollToItem(0)
   }
@@ -64,7 +71,7 @@ fun SearchScreen(
     modifier = modifier
       .fillMaxSize()
       .background(MovaraBackground)
-      .padding(horizontal = 20.dp),
+      .padding(horizontal = screenMargin),
     verticalArrangement = Arrangement.spacedBy(16.dp)
   ) {
     Row(
@@ -104,7 +111,7 @@ fun SearchScreen(
     }
 
     LazyVerticalGrid(
-      columns = GridCells.Fixed(3),
+      columns = GridCells.Fixed(columnCount),
       state = gridState,
       modifier = Modifier.weight(1f),
       contentPadding = PaddingValues(bottom = 20.dp),
@@ -114,13 +121,24 @@ fun SearchScreen(
       items(state.movies, key = Movie::id) { movie ->
         SearchMovieCard(movie = movie, onClick = { onMovieClick(movie.id) })
       }
+      if (state.isLoading) {
+        items(columnCount * 2) { index ->
+          PulsingPlaceholder(
+            modifier = Modifier
+              .fillMaxWidth()
+              .aspectRatio(2f / 3f)
+              .semantics {
+                if (index == 0) {
+                  contentDescription = loadingDescription
+                  liveRegion = LiveRegionMode.Polite
+                }
+              }
+          )
+        }
+      }
       item(span = { GridItemSpan(maxLineSpan) }) {
         when {
-          state.isLoading -> Text(
-            stringResource(R.string.search_loading),
-            color = MovaraTextSecondary,
-            style = MaterialTheme.typography.bodyMedium
-          )
+          state.isLoading -> Unit
           state.requestError != null -> Column {
             Text(
               state.requestError,
@@ -131,6 +149,12 @@ fun SearchScreen(
               Text(stringResource(R.string.search_retry))
             }
           }
+          state.page > 0 && state.movies.isEmpty() -> Text(
+            stringResource(R.string.search_no_results),
+            color = MovaraTextSecondary,
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
+          )
           state.canLoadMore -> TextButton(onClick = onLoadMore) {
             Text(stringResource(R.string.search_load_more))
           }

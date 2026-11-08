@@ -5,4 +5,5 @@
     <string name="search_load_more">Load more</string>
     <string name="search_retry">Try again</string>
     <string name="search_loading">Searching…</string>
+    <string name="search_no_results">No movies found.</string>
 </resources>
