@@ -47,6 +47,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.navigation.toRoute
+import ee.movara.app.ui.home.HomeScreen
+import ee.movara.app.ui.home.HomeViewModel
 import ee.movara.app.ui.search.SearchScreen
 import ee.movara.app.ui.search.SearchViewModel
 import ee.movara.app.ui.selectedgenre.SelectedGenreScreen
@@ -107,21 +109,12 @@ fun MainNavigation(container: AppContainer) {
     ) {
 
       composable<HomeRoute> {
-        Column(
-          modifier = Modifier.fillMaxSize(),
-          horizontalAlignment = Alignment.CenterHorizontally,
-          verticalArrangement = Arrangement.Center
-        ) {
-          Text("Home", fontSize = 26.sp)
-
-          Button(
-            onClick = {
-              navController.navigate(SearchRoute)
-            }
-          ) {
-            Text("Open Search")
-          }
-        }
+        val homeViewModel = viewModel { HomeViewModel(container.movieRepository) }
+        HomeScreen(
+          viewModel = homeViewModel,
+          onSearch = { navController.navigate(SearchRoute) },
+          onMovieClick = { movieId -> navController.navigate(MovieDetailsRoute(movieId)) }
+        )
       }
 
       composable<SearchRoute> {
