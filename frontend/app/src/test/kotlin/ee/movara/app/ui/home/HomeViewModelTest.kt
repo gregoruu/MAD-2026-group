@@ -64,6 +64,51 @@ class HomeViewModelTest {
     assertEquals(100, model.uiState.value.topPick?.id)
   }
 
+  @Test fun watchedMoviesAreExcludedFromEveryRecommendationRailAndTopPick() = runTest {
+    repository.liked.value = success(listOf(movie(1), movie(2), movie(3)))
+    repository.watched.value = success(listOf(movie(101), movie(103)))
+    val model = viewModel()
+    assertEquals(listOf(emptyList<Int>(), listOf(102), emptyList<Int>()),
+      model.uiState.value.rails.map { rail -> rail.movies.map(Movie::id) })
+    assertEquals(102, model.uiState.value.topPick?.id)
+  }
+
+  @Test fun watchedChangesRefilterTrendingWithoutRefetchingAndCanRestoreMovies() = runTest {
+    repository.trendingResult = success(page(movie(100), movie(101)))
+    repository.watched.value = success(listOf(movie(100)))
+    val model = viewModel()
+    assertEquals(listOf(movie(101)), model.uiState.value.rails.single().movies)
+    assertEquals(101, model.uiState.value.topPick?.id)
+    repository.watched.value = success(listOf(movie(100), movie(101)))
+    assertTrue(model.uiState.value.rails.single().movies.isEmpty())
+    assertNull(model.uiState.value.topPick)
+    repository.watched.value = success(emptyList())
+    assertEquals(listOf(movie(100), movie(101)), model.uiState.value.rails.single().movies)
+    assertEquals(100, model.uiState.value.topPick?.id)
+    assertEquals(1, repository.trendingCalls)
+  }
+
+  @Test fun watchedChangesRefilterRecommendationsWithoutRefetching() = runTest {
+    repository.liked.value = success(listOf(movie(1), movie(2)))
+    val model = viewModel()
+    repository.watched.value = success(listOf(movie(101)))
+    assertEquals(102, model.uiState.value.topPick?.id)
+    repository.watched.value = success(emptyList())
+    assertEquals(101, model.uiState.value.topPick?.id)
+    assertEquals(listOf(1, 2), repository.recommendationCalls)
+  }
+
+  @Test fun watchedReadFailureHidesUnfilteredMoviesUntilRecovery() = runTest {
+    repository.watched.value = failure
+    val model = viewModel()
+    assertTrue(model.uiState.value.loadFailed)
+    assertTrue(model.uiState.value.rails.isEmpty())
+    assertNull(model.uiState.value.topPick)
+    repository.watched.value = success(emptyList())
+    assertFalse(model.uiState.value.loadFailed)
+    assertEquals(100, model.uiState.value.topPick?.id)
+  }
+
   @Test fun failedRequestCanBeRetried() = runTest {
     repository.trendingResult = failure
     val model = viewModel()
@@ -115,6 +160,7 @@ private val failure = RepositoryResult.Error(ErrorCategory.NETWORK, "Unavailable
 private class HomeRepository : MovieRepository {
   val liked = MutableStateFlow<RepositoryResult<List<Movie>>>(success(emptyList()))
   private val saved = MutableStateFlow<RepositoryResult<List<Movie>>>(success(emptyList()))
+  val watched = MutableStateFlow<RepositoryResult<List<Movie>>>(success(emptyList()))
   var trendingResult: RepositoryResult<MoviePage> = success(page(movie(100)))
   var trendingCalls = 0
   val recommendationCalls = mutableListOf<Int>()
@@ -130,7 +176,11 @@ private class HomeRepository : MovieRepository {
     return if (movieId == failedRecommendationId) failure else success(page(movie(movieId + 100)))
   }
   override fun observeMovies(listType: MovieListType) =
-    if (listType == MovieListType.LIKED) liked else saved
+    when (listType) {
+      MovieListType.LIKED -> liked
+      MovieListType.WATCH_LATER -> saved
+      MovieListType.WATCHED -> watched
+    }
   override suspend fun saveMovie(movie: Movie, listType: MovieListType): RepositoryResult<Unit> {
     if (failSave) return failure
     val flow = observeMovies(listType)

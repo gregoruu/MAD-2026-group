@@ -1,6 +1,7 @@
 package ee.movara.app.ui.home
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
@@ -30,6 +31,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ee.movara.app.R
@@ -80,95 +82,101 @@ internal fun HomeContent(
   onRetry: () -> Unit,
   modifier: Modifier = Modifier
 ) {
-  val spotlightHeight = LocalConfiguration.current.screenHeightDp.dp * 0.62f
-  LazyColumn(
-    modifier = modifier.fillMaxSize(),
-    contentPadding = PaddingValues(bottom = 24.dp),
-    verticalArrangement = Arrangement.spacedBy(40.dp)
-  ) {
-    item(key = "header") {
-      Row(
-        modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 12.dp, top = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-      ) {
-        Text(
-          stringResource(R.string.app_name),
-          style = MaterialTheme.typography.titleMedium,
-          color = MaterialTheme.colorScheme.onBackground
-        )
-        IconButton(onClick = onSearch, modifier = Modifier.size(48.dp)) {
-          Icon(
-            painterResource(R.drawable.ic_ui_search),
-            contentDescription = stringResource(R.string.home_search),
-            tint = MaterialTheme.colorScheme.primary
+  val configuration = LocalConfiguration.current
+  BoxWithConstraints(modifier.fillMaxSize()) {
+    val horizontalSpotlight = maxWidth >= 600.dp
+    val screenMargin = if (horizontalSpotlight) 24.dp else 20.dp
+    val spotlightHeight = configuration.screenHeightDp.dp * 0.62f
+    LazyColumn(
+      modifier = Modifier.fillMaxSize(),
+      contentPadding = PaddingValues(bottom = 24.dp),
+      verticalArrangement = Arrangement.spacedBy(40.dp)
+    ) {
+      item(key = "header") {
+        Row(
+          modifier = Modifier.fillMaxWidth().padding(start = screenMargin, end = if (horizontalSpotlight) screenMargin else 12.dp, top = 8.dp),
+          verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+          Text(
+            stringResource(R.string.app_name),
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onBackground
           )
-        }
-      }
-    }
-    if (state.loading) {
-      item(key = "loading") {
-        Column(verticalArrangement = Arrangement.spacedBy(40.dp)) {
-          PulsingPlaceholder(
-            Modifier.fillMaxWidth().height(spotlightHeight).padding(horizontal = 20.dp),
-            cornerRadius = 24.dp
-          )
-          Row(
-            Modifier.padding(horizontal = 20.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-          ) {
-            repeat(3) { PulsingPlaceholder(Modifier.size(144.dp, 208.dp)) }
+          IconButton(onClick = onSearch, modifier = Modifier.size(48.dp)) {
+            Icon(
+              painterResource(R.drawable.ic_ui_search),
+              contentDescription = stringResource(R.string.home_search),
+              tint = MaterialTheme.colorScheme.primary
+            )
           }
         }
       }
-    } else {
-      state.topPick?.let { movie ->
-        item(key = "spotlight") {
-          SpotlightCard(
-            movie = movie,
-            onClick = { onMovieClick(movie.id) },
-            modifier = Modifier.padding(horizontal = 20.dp),
-            height = spotlightHeight,
-            actions = {
-              FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-              ) {
-                MovieActionButton(
-                  MovieAction.LIKE, movie.id in state.likedIds, { onLike(movie) }
-                )
-                MovieActionButton(
-                  MovieAction.WATCH_LATER, movie.id in state.watchLaterIds, { onWatchLater(movie) }
-                )
-              }
-            }
-          )
-        }
-      }
-      if (state.loadFailed) {
-        item(key = "error") { HomeMessage(R.string.home_load_error, true, onRetry) }
-      } else if (state.rails.isEmpty()) {
-        item(key = "empty") { HomeMessage(R.string.home_empty, true, onRetry) }
-      }
-      items(state.rails, key = { it.sourceMovie?.id ?: "trending" }) { rail ->
-        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-          Text(
-            text = rail.sourceMovie?.let {
-              stringResource(R.string.home_because_you_liked, it.title)
-            } ?: stringResource(R.string.home_trending),
-            modifier = Modifier.padding(horizontal = 20.dp),
-            style = MaterialTheme.typography.headlineSmall,
-            color = MaterialTheme.colorScheme.onBackground
-          )
-          when {
-            rail.failed -> HomeMessage(R.string.home_load_error, true, onRetry)
-            rail.movies.isEmpty() -> HomeMessage(R.string.home_empty, false, onRetry)
-            else -> LazyRow(
-              contentPadding = PaddingValues(horizontal = 20.dp),
+      if (state.loading) {
+        item(key = "loading") {
+          Column(verticalArrangement = Arrangement.spacedBy(40.dp)) {
+            PulsingPlaceholder(
+              Modifier.fillMaxWidth().height(spotlightHeight).padding(horizontal = screenMargin),
+              cornerRadius = 24.dp
+            )
+            Row(
+              Modifier.padding(horizontal = screenMargin),
               horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-              items(rail.movies, key = Movie::id) { movie ->
-                MovieCard(movie, onClick = { onMovieClick(movie.id) })
+              repeat(3) { PulsingPlaceholder(Modifier.size(144.dp, 208.dp)) }
+            }
+          }
+        }
+      } else {
+        state.topPick?.let { movie ->
+          item(key = "spotlight") {
+            SpotlightCard(
+              movie = movie,
+              onClick = { onMovieClick(movie.id) },
+              modifier = Modifier.padding(horizontal = screenMargin),
+              height = spotlightHeight,
+              horizontal = horizontalSpotlight,
+              actions = {
+                FlowRow(
+                  horizontalArrangement = Arrangement.spacedBy(12.dp),
+                  verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                  MovieActionButton(
+                    MovieAction.LIKE, movie.id in state.likedIds, { onLike(movie) }
+                  )
+                  MovieActionButton(
+                    MovieAction.WATCH_LATER, movie.id in state.watchLaterIds, { onWatchLater(movie) }
+                  )
+                }
+              }
+            )
+          }
+        }
+        if (state.loadFailed) {
+          item(key = "error") { HomeMessage(R.string.home_load_error, true, onRetry, screenMargin) }
+        } else if (state.rails.isEmpty()) {
+          item(key = "empty") { HomeMessage(R.string.home_empty, true, onRetry, screenMargin) }
+        }
+        items(state.rails, key = { it.sourceMovie?.id ?: "trending" }) { rail ->
+          Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Text(
+              text = rail.sourceMovie?.let {
+                stringResource(R.string.home_because_you_liked, it.title)
+              } ?: stringResource(R.string.home_trending),
+              modifier = Modifier.padding(horizontal = screenMargin),
+              style = MaterialTheme.typography.headlineSmall,
+              color = MaterialTheme.colorScheme.onBackground
+            )
+            when {
+              rail.failed -> HomeMessage(R.string.home_load_error, true, onRetry, screenMargin)
+              rail.movies.isEmpty() -> HomeMessage(R.string.home_empty, false, onRetry, screenMargin)
+              else -> LazyRow(
+                contentPadding = PaddingValues(horizontal = screenMargin),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+              ) {
+                items(rail.movies, key = Movie::id) { movie ->
+                  MovieCard(movie, onClick = { onMovieClick(movie.id) })
+                }
               }
             }
           }
@@ -179,9 +187,9 @@ internal fun HomeContent(
 }
 
 @Composable
-private fun HomeMessage(message: Int, retry: Boolean, onRetry: () -> Unit) {
+private fun HomeMessage(message: Int, retry: Boolean, onRetry: () -> Unit, screenMargin: Dp) {
   Column(
-    Modifier.padding(horizontal = 20.dp),
+    Modifier.padding(horizontal = screenMargin),
     verticalArrangement = Arrangement.spacedBy(8.dp)
   ) {
     Text(
@@ -194,6 +202,7 @@ private fun HomeMessage(message: Int, retry: Boolean, onRetry: () -> Unit) {
 }
 
 @Preview(showBackground = true, widthDp = 412, heightDp = 917)
+@Preview(name = "Medium", showBackground = true, widthDp = 700, heightDp = 840)
 @Composable
 private fun HomePreview() {
   val movie = Movie(1, "The Grand Budapest Hotel", null, 2014)

@@ -7,7 +7,8 @@ import ee.movara.app.data.repository.MovieRepository
 import ee.movara.app.data.repository.RepositoryResult
 import ee.movara.app.domain.model.Movie
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -35,7 +36,19 @@ data class HomeUiState(
 /** Home presentation; recommendation ranking and filtering can evolve independently of the UI. */
 class HomeViewModel(private val repository: MovieRepository) : ViewModel() {
   private val state = MutableStateFlow(HomeUiState())
-  val uiState = state.asStateFlow()
+  // Keep the fetched rails intact so watched-list changes can refilter locally.
+  val uiState = combine(state, repository.observeWatchedMovies()) { current, watched ->
+    when (watched) {
+      is RepositoryResult.Success -> {
+        val watchedIds = watched.data.map(Movie::id).toSet()
+        current.copy(rails = current.rails.map { rail ->
+          rail.copy(movies = rail.movies.filterNot { it.id in watchedIds })
+        })
+      }
+      is RepositoryResult.Error ->
+        current.copy(loading = false, rails = emptyList(), loadFailed = true)
+    }
+  }.stateIn(viewModelScope, SharingStarted.Eagerly, HomeUiState())
   private val refresh = MutableStateFlow(0)
   private val pendingActions = mutableSetOf<Pair<Int, MovieListType>>()
 

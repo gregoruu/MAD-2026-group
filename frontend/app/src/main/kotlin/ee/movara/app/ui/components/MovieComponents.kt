@@ -8,6 +8,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -178,6 +181,7 @@ fun SpotlightCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     height: Dp? = null,
+    horizontal: Boolean = false,
     actions: (@Composable () -> Unit)? = null
 ) {
     val targetHeight = height
@@ -192,7 +196,51 @@ fun SpotlightCard(
         ),
         border = BorderStroke(1.dp, MovaraBorder)
     ) {
-        Box(Modifier.fillMaxSize()) {
+        if (horizontal) {
+            Row(Modifier.fillMaxSize()) {
+                TmdbImage(
+                    movie.posterPath,
+                    modifier = Modifier.weight(0.4f).fillMaxHeight(),
+                    size = "w500"
+                )
+                Column(
+                    modifier = Modifier.weight(0.6f).fillMaxHeight()
+                        .verticalScroll(rememberScrollState()).padding(24.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "TOP PICK",
+                        color = MovaraGold,
+                        style = MaterialTheme.typography.labelMedium
+                    )
+                    Text(
+                        text = movie.title,
+                        style = MaterialTheme.typography.displayLarge,
+                        color = MovaraText,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    movie.releaseYear?.let { year ->
+                        Text(
+                            text = "$year",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MovaraTextSecondary
+                        )
+                    }
+                    actions?.invoke()
+                    androidx.compose.material3.TextButton(
+                        onClick = onClick,
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 0.dp)
+                    ) {
+                        Text(
+                            text = androidx.compose.ui.res.stringResource(R.string.home_see_details),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MovaraGold
+                        )
+                    }
+                }
+            }
+        } else Box(Modifier.fillMaxSize()) {
             TmdbImage(
                 movie.posterPath,
                 modifier = Modifier.matchParentSize(),
