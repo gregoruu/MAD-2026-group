@@ -33,33 +33,22 @@ In the left file pane, select **Project** from the dropdown above the file tree 
 4. Click **Apply**, accept the licenses, and wait for installation to finish.
 5. Under **Settings > Build, Execution, Deployment > Build Tools > Gradle**, use Android Studio's bundled JDK as the **Gradle JDK**.
 
-Android Studio stores your SDK path in the ignored `local.properties` file. The next section adds your TMDB API key to the same file. No backend or user account is required.
+Android Studio stores your SDK path in the ignored `local.properties` file. No user account or TMDB API key is required.
 
-## 3. Add your TMDB API key
+## 3. How the app reaches TMDB
 
-Movara reads movie data from [TMDB](https://www.themoviedb.org/). Every developer uses their **own** key. The key is never committed, so you have to add it once after cloning.
+Movara reads movie data from [TMDB](https://www.themoviedb.org/). The app does not talk to TMDB directly: it sends its requests to the TMDB proxy in `backend/`, a Cloudflare Worker that adds the API key and forwards them. The key is stored only in Cloudflare, so no build of the app contains it, and you do not need a key of your own.
 
-1. Create a free TMDB account and open **Settings > API**.
-2. Request an API key for a personal/educational project and copy the **API Key (v3 auth)** value.
-3. Open `local.properties` in the **repository root**. Android Studio creates this file during the first import; if it is missing, create it yourself.
-4. Add your key on its own line, without quotes:
+| Build type | Proxy |
+| --- | --- |
+| `debug`, `staging` | `movara-tmdb-proxy-staging` |
+| `release` | `movara-tmdb-proxy-production` |
 
-   ```properties
-   TMDB_API_KEY=your_key_here
-   ```
+The build exposes the proxy address to the app as `BuildConfig.TMDB_BASE_URL`. Running, deploying and configuring the proxy is described in `backend/README.md`.
 
-5. In Android Studio, click **File > Sync Project with Gradle Files**. The build picks up the new value on the next sync or build; you do not have to restart Android Studio.
+Movie images come from `image.tmdb.org`, which needs no key, so they do not go through the proxy.
 
-The build reads this value and exposes it to the app as `BuildConfig.TMDB_API_KEY`. If the key is missing, the build still succeeds but prints a warning and TMDB requests fail, so check the **Build** output first when the app shows no movies.
-
-Rules for the key:
-
-- `local.properties` is listed in the repository's `.gitignore`. **Do not remove that line and do not force-add the file.** The same applies to `*.jks` and `*.keystore` signing files.
-- Never paste a key into a source file, a test, a commit message, a pull request, or a screenshot.
-- If a key does end up in a commit, treat it as leaked: revoke it in TMDB's settings and create a new one. Deleting the line in a later commit does not remove it from the Git history.
-- A build server has no `local.properties`. It supplies the key through a `TMDB_API_KEY` environment variable, which the build uses as a fallback.
-
-With a key configured you can check that TMDB answers, without starting the app:
+You can check that the staging proxy and TMDB answer, without starting the app:
 
 ```
 ./gradlew :app:testDebugUnitTest -PrunLiveTmdbTests --tests "*TmdbApiServiceLiveTest"
@@ -67,14 +56,14 @@ With a key configured you can check that TMDB answers, without starting the app:
 
 These tests call the real API and need internet access. They only run when you ask for them
 with `-PrunLiveTmdbTests` (a build server can use a `RUN_LIVE_TMDB_TESTS` environment
-variable instead); otherwise they are skipped, including when a key is configured. A plain
-`./gradlew test` therefore never depends on the network, on TMDB being up, or on your
-request quota. The rest of the test suite never touches the network either.
+variable instead); otherwise they are skipped. A plain `./gradlew test` therefore never
+depends on the network or on the proxy being up. The rest of the test suite never touches
+the network either.
 
-With the switch on but no key configured, the live tests fail rather than skip: you asked
-for an answer from TMDB and the run cannot give you one.
+Rules for keys and secrets:
 
-`BuildConfig.TMDB_API_KEY` is compiled into the APK, so it is readable by anyone who unpacks the build. This step keeps the key out of **source control**; it does not make the key secret from a user of the app. That is the expected trade-off for a TMDB client key.
+- `local.properties` is listed in the repository's `.gitignore`. **Do not remove that line and do not force-add the file.** The same applies to `*.jks` and `*.keystore` signing files.
+- Never paste a key into a source file, a test, a commit message, a pull request, or a screenshot.
 
 ## 4. Create and start an emulator
 
@@ -166,7 +155,49 @@ Live Edit requires API 30 or newer; the API 37 emulator meets this requirement. 
 - **No target device:** start your virtual phone in Device Manager and wait for its home screen.
 - **Emulator fails to boot:** use the virtual device's menu in Device Manager and choose **Cold Boot**.
 - **Build fails:** inspect the first relevant error in the **Build** tool window.
-- **No movies load / `TMDB_API_KEY is not set` in the build output:** add your key to the repository root's `local.properties` as described in section 3, then sync Gradle again.
+- **No movies load:** run the live tests from section 3. A `500` with `The proxy is not configured.` means the proxy has no `TMDB_API_KEY` secret; a `401` means TMDB rejected the key. Both are fixed in Cloudflare, not in the app; see `backend/README.md`.
 - **`The release build is not signed` / you only get `app-release-unsigned.apk`:** none of the four `RELEASE_*` values are set. See section 6. Debug and staging builds do not need them, so this is expected unless you are preparing a shared build.
 - **`Release signing is incomplete` or `no keystore was found at …`:** some of the four values are set and some are not, or the path does not point at a file. The message names the resolved path and which values are blank. Note that a Windows path must use forward slashes — `local.properties` is read with `java.util.Properties`, which treats `\` as an escape character, so `C:\keys\movara.jks` silently becomes `C:keysmovara.jks`.
 - **Release build crashes where debug works:** only the release build shrinks code, so the cause is usually a missing R8 keep rule. Add it to `frontend/app/proguard-rules.pro` and say in a comment which library needs it.
+
+## Image loading
+
+Movie images use the shared TmdbImage component and an application-wide
+Coil ImageLoader with crossfade enabled.
+
+Cards and rows use w342, Spotlight uses w500, and Movie Details
+backgrounds should use w780.
+
+The Movie Details screen is not implemented yet; its w780 integration still
+needs to be completed under issue #36. Genre tiles share the same loading
+and error rendering while keeping their image URLs unchanged.
+
+Missing or failed images show a dark placeholder with a movie icon.
+The disk cache stores up to 100 MiB of images. Previously loaded images
+can appear offline while they remain cached. Movie metadata is not
+stored by this image cache.
+
+### Automated image tests
+
+Run the URL model tests and the existing unit suite with
+`./gradlew :app:testDebugUnitTest :app:lintDebug`.
+`TmdbImageModelTest` covers null/blank paths, trimming, relative paths,
+absolute URLs, and the w342/w500/w780 sizes.
+
+With an Android device or emulator connected, run:
+
+```sh
+./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=ee.movara.app.ui.components.MovieImageTest,ee.movara.app.ui.components.MovieImageCacheTest
+```
+
+The five UI tests cover missing paths without starting requests, malformed
+URLs, loading failures, model changes between error/loading/success, and an
+old request completing after the model changes. Controlled Coil interceptors
+hold requests in loading until each test releases them.
+
+The cache test uses the application's 100 MiB disk cache, real PNG decoding,
+and a controlled OkHttp transport. Memory caching is disabled. It verifies
+that the second request succeeds from disk without invoking the transport,
+which fails any subsequent network call. These tests need no TMDB key or
+external image server.
+

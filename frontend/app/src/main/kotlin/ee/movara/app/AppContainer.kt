@@ -25,13 +25,12 @@ class AppContainer(private val context: Context) {
 
   /** The one HTTP client of the app. Everything that talks to TMDB shares it. */
   private val okHttpClient: OkHttpClient by lazy {
-    createTmdbOkHttpClient(
-      apiKey = BuildConfig.TMDB_API_KEY,
-      enableHttpLogging = BuildConfig.ENABLE_HTTP_LOGGING
-    )
+    createTmdbOkHttpClient(enableHttpLogging = BuildConfig.ENABLE_HTTP_LOGGING)
   }
 
-  val tmdbApiService: TmdbApiService by lazy { createTmdbApiService(okHttpClient) }
+  val tmdbApiService: TmdbApiService by lazy {
+    createTmdbApiService(okHttpClient, BuildConfig.TMDB_BASE_URL)
+  }
 
   val movieRepository: MovieRepository by lazy {
     DefaultMovieRepository(tmdbApiService, database.tmdbCacheDao(), database.savedMovieDao())
