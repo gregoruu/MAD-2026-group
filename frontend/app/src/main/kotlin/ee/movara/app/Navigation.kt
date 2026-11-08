@@ -40,6 +40,9 @@ import ee.movara.app.ui.about.AboutScreen
 import androidx.compose.material3.IconButton
 import androidx.compose.ui.res.stringResource
 import ee.movara.app.ui.genres.GenresScreen
+import androidx.lifecycle.viewmodel.compose.viewModel
+import ee.movara.app.ui.home.HomeScreen
+import ee.movara.app.ui.home.HomeViewModel
 
 // Main navigation structure of application.
 // Defines the three primary destinations: Home, Genres and My Movies.
@@ -95,21 +98,12 @@ fun MainNavigation(container: AppContainer) {
     ) {
 
       composable<HomeRoute> {
-        Column(
-          modifier = Modifier.fillMaxSize(),
-          horizontalAlignment = Alignment.CenterHorizontally,
-          verticalArrangement = Arrangement.Center
-        ) {
-          Text("Home", fontSize = 26.sp)
-
-          Button(
-            onClick = {
-              navController.navigate(SearchRoute)
-            }
-          ) {
-            Text("Open Search")
-          }
-        }
+        val homeViewModel = viewModel { HomeViewModel(container.movieRepository) }
+        HomeScreen(
+          viewModel = homeViewModel,
+          onSearch = { navController.navigate(SearchRoute) },
+          onMovieClick = { movieId -> navController.navigate(MovieDetailsRoute(movieId)) }
+        )
       }
 
       composable<SearchRoute> {

@@ -166,7 +166,8 @@ fun SpotlightCard(
     movie: Movie,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    height: Dp? = null
+    height: Dp? = null,
+    actions: (@Composable () -> Unit)? = null
 ) {
     val targetHeight = height
         ?: (LocalConfiguration.current.screenHeightDp.dp * 0.62f)
@@ -228,11 +229,18 @@ fun SpotlightCard(
                     )
                 }
 
-                Text(
-                    text = "SEE DETAILS",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MovaraGold
-                )
+                actions?.invoke()
+
+                androidx.compose.material3.TextButton(
+                    onClick = onClick,
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 0.dp)
+                ) {
+                    Text(
+                        text = androidx.compose.ui.res.stringResource(R.string.home_see_details),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MovaraGold
+                    )
+                }
             }
         }
     }

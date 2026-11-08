@@ -5,6 +5,16 @@
     <string name="welcome_title">Welcome to %1$s</string>
     <string name="welcome_description">Discover your next favorite movie.</string>
 
+    <!-- Home screen -->
+    <string name="home_search">Search movies</string>
+    <string name="home_see_details">See Details</string>
+    <string name="home_because_you_liked">Because you liked %1$s</string>
+    <string name="home_trending">Trending this week</string>
+    <string name="home_load_error">Couldn’t load movies. Please try again.</string>
+    <string name="home_empty">No recommendations available right now. Try again later.</string>
+    <string name="home_retry">Try again</string>
+    <string name="home_action_error">Couldn’t update your movies. Please try again.</string>
+
     <!-- About screen -->
     <string name="about_title">About</string>
     <string name="about_back">Back</string>
