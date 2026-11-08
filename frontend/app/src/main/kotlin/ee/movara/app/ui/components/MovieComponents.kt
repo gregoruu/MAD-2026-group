@@ -45,8 +45,9 @@ import ee.movara.app.ui.theme.MovaraText
 import ee.movara.app.ui.theme.MovaraTextSecondary
 import ee.movara.app.ui.theme.*
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.aspectRatio
 
-//Converts a TMDB poster path into a complete image URL.
+//Converts a TMDB poster path into a complete image URL
 private fun posterUrl(path: String, size: String): String {
     if (path.startsWith("https://") || path.startsWith("http://")) {
         return path
@@ -55,7 +56,7 @@ private fun posterUrl(path: String, size: String): String {
     return "https://image.tmdb.org/t/p/$size$normalized"
 }
 
-//Displays a fallback icon when a movie poster is missing or cannot be loaded.
+//Displays a fallback icon when a movie poster is missing or cant be loaded
 @Composable
 private fun MissingPoster(modifier: Modifier = Modifier) {
     Box(
@@ -71,7 +72,7 @@ private fun MissingPoster(modifier: Modifier = Modifier) {
     }
 }
 
-// Reusable poster image component.
+// Reusable poster image
 @Composable
 private fun PosterImage(
     path: String?,
@@ -106,11 +107,21 @@ private fun PosterImage(
 fun MovieCard(
     movie: Movie,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    fillGridCell: Boolean = false
 ) {
+    val cardModifier = if (fillGridCell) {
+        modifier
+            .fillMaxWidth()
+            .aspectRatio(144f / 208f)
+    } else {
+        modifier
+            .width(144.dp)
+            .height(208.dp)
+    }
     Card(
         onClick = onClick,
-        modifier = modifier.width(144.dp).height(208.dp),
+        modifier = cardModifier,
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
             containerColor = MovaraSurface
@@ -263,11 +274,7 @@ fun GenreTile(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.BottomStart
         ) {
-            MovieImage(
-                model = imageUrl?.trim()?.takeIf { it.isNotEmpty() },
-                modifier = Modifier.matchParentSize()
-            )
-            // Prefer local images so genre tiles also work offline.
+// Prefer local images so genre tiles also work offline.
             when {
                 imageRes != null -> {
                     Image(
@@ -279,16 +286,13 @@ fun GenreTile(
                 }
 
                 !imageUrl.isNullOrBlank() -> {
-                    AsyncImage(
-                        model = imageUrl,
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
+                    MovieImage(
+                        model = imageUrl.trim(),
                         modifier = Modifier.matchParentSize()
                     )
                 }
             }
 
-            // Dark overlay keeps the genre name readable.
             Box(
                 Modifier
                     .matchParentSize()
