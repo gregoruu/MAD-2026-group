@@ -40,6 +40,14 @@ import ee.movara.app.ui.about.AboutScreen
 import androidx.compose.material3.IconButton
 import androidx.compose.ui.res.stringResource
 import ee.movara.app.ui.genres.GenresScreen
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.createSavedStateHandle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
+import ee.movara.app.ui.search.SearchScreen
+import ee.movara.app.ui.search.SearchViewModel
 
 // Main navigation structure of application.
 // Defines the three primary destinations: Home, Genres and My Movies.
@@ -113,21 +121,23 @@ fun MainNavigation(container: AppContainer) {
       }
 
       composable<SearchRoute> {
-        Column(
-          modifier = Modifier.fillMaxSize(),
-          horizontalAlignment = Alignment.CenterHorizontally,
-          verticalArrangement = Arrangement.Center
-        ) {
-          Text("Search", fontSize = 26.sp)
-
-          Button(
-            onClick = {
-              navController.popBackStack()
+        val searchViewModel: SearchViewModel = viewModel(
+          factory = viewModelFactory {
+            initializer {
+              SearchViewModel(container.movieRepository, createSavedStateHandle())
             }
-          ) {
-            Text("Back")
           }
-        }
+        )
+        val state by searchViewModel.uiState.collectAsStateWithLifecycle()
+        SearchScreen(
+          state = state,
+          onQueryChange = searchViewModel::onQueryChange,
+          onSearch = searchViewModel::submitSearch,
+          onLoadMore = searchViewModel::loadMore,
+          onRetry = searchViewModel::retry,
+          onMovieClick = { navController.navigate(MovieDetailsRoute(it)) },
+          onBack = { navController.popBackStack() }
+        )
       }
 
       composable<GenresRoute> {
