@@ -13,23 +13,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import ee.movara.app.R
-import ee.movara.app.domain.model.Genre
 import ee.movara.app.ui.components.GenreTile
 import ee.movara.app.ui.theme.*
+import ee.movara.app.domain.model.GenreCatalog
 
-// Ten predefined genres with their TMDB IDs
-private val genres = listOf(
-    Genre(28, "Action"),
-    Genre(18, "Drama"),
-    Genre(878, "Sci-Fi"),
-    Genre(53, "Thriller"),
-    Genre(27, "Horror"),
-    Genre(35, "Comedy"),
-    Genre(10749, "Romance"),
-    Genre(80, "Crime"),
-    Genre(16, "Animation"),
-    Genre(99, "Documentary")
-)
 
 // Displays movie genres in a responsive grid
 // Uses two columns on phones and three on medium screens
@@ -75,7 +62,7 @@ fun GenresScreen(
                     Arrangement.spacedBy(12.dp)
             ) {
                 items(
-                    items = genres,
+                    items = GenreCatalog.genres,
                     key = { it.id }
                 ) { genre ->
                     GenreTile(

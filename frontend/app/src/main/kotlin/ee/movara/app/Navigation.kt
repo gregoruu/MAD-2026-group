@@ -40,9 +40,14 @@ import ee.movara.app.ui.about.AboutScreen
 import androidx.compose.material3.IconButton
 import androidx.compose.ui.res.stringResource
 import ee.movara.app.ui.genres.GenresScreen
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.toRoute
 import ee.movara.app.ui.home.HomeScreen
 import ee.movara.app.ui.home.HomeViewModel
+import ee.movara.app.ui.selectedgenre.SelectedGenreScreen
+import ee.movara.app.ui.selectedgenre.SelectedGenreViewModel
+import ee.movara.app.ui.selectedgenre.SelectedGenreViewModelFactory
 
 // Main navigation structure of application.
 // Defines the three primary destinations: Home, Genres and My Movies.
@@ -53,7 +58,7 @@ fun MainNavigation(container: AppContainer) {
   val currentDestination =
     navController.currentBackStackEntryAsState().value?.destination
 
-//Shared layout and bottom navigation bar.
+//Shared layout and bottom navigation bar
   Scaffold(
     bottomBar = {
       if (currentDestination?.hasRoute<AboutRoute>() != true) {
@@ -89,7 +94,7 @@ fun MainNavigation(container: AppContainer) {
         }
       }
     }
-    // Register all navigation destinations and their screen content.
+    // Register all navigation destinations and their screen content
   ) { padding ->
     NavHost(
       navController = navController,
@@ -138,7 +143,7 @@ fun MainNavigation(container: AppContainer) {
         Box(
           modifier = Modifier.fillMaxSize()
         ) {
-          // Info button opens the About screen.
+          // Info button opens the About screen
           IconButton(
             onClick = {
               navController.navigate(AboutRoute)
@@ -164,29 +169,42 @@ fun MainNavigation(container: AppContainer) {
       }
 
 
-      composable<SelectedGenreRoute> {
-        Column(
-          modifier = Modifier.fillMaxSize(),
-          horizontalAlignment = Alignment.CenterHorizontally,
-          verticalArrangement = Arrangement.Center
-        ) {
-          Text("Selected Genre", fontSize = 26.sp)
+      composable<SelectedGenreRoute> { backStackEntry ->
+        val route = backStackEntry.toRoute<SelectedGenreRoute>()
 
-          Button(
-            onClick = {
-              navController.navigate(MovieDetailsRoute(1))
-            }
-          ) {
-            Text("Open Movie Details")
-          }
+        val selectedGenreViewModel: SelectedGenreViewModel = viewModel(
+          viewModelStoreOwner = backStackEntry,
+          factory = SelectedGenreViewModelFactory(
+            genreId = route.genreId,
+            movieRepository = container.movieRepository
+          )
+        )
 
-          Button(
-            onClick = { navController.popBackStack() }
-          ) {
-            Text("Back")
+        // Observe changes in loading
+        val uiState = selectedGenreViewModel.uiState
+          .collectAsStateWithLifecycle().value
+
+        SelectedGenreScreen(
+          genreId = route.genreId,
+          movies = uiState.movies,
+          isLoading = uiState.isLoading,
+          isLoadingMore = uiState.isLoadingMore,
+          errorMessage = uiState.errorMessage,
+          loadMoreError = uiState.loadMoreError,
+          hasMore = uiState.hasMore,
+          onRetry = selectedGenreViewModel::retry,
+          onLoadMore = selectedGenreViewModel::loadMore,
+          onBack = {
+            navController.popBackStack()
+          },
+          onMovieClick = { movie ->
+            navController.navigate(
+              MovieDetailsRoute(movie.id)
+            )
           }
-        }
+        )
       }
+
 
       composable<MovieDetailsRoute> {
         Column(
