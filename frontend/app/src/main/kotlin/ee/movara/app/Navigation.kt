@@ -115,8 +115,11 @@ fun MainNavigation(container: AppContainer) {
           onOpenMovie = { navController.navigate(MovieDetailsRoute(it)) },
           onSearch = { navController.navigate(SearchRoute) },
           onRetry = {
-            if (listsState.storageError != null) movieLists.retry()
-            home.refresh()
+            if (listsState.storageError != null) {
+              movieLists.retry()
+            } else {
+              home.refresh()
+            }
           }
         )
       }

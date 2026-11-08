@@ -63,6 +63,9 @@ fun MovieActionButton(
             else R.drawable.ic_ui_visibility
     }
 
+    val containerColor = if (isSelected) selectedColor else MovaraSurfaceSecondary
+    val contentColor = if (isSelected) MovaraBackground else MovaraTextSecondary
+
     FilledTonalButton(
         onClick = onClick,
         enabled = enabled,
@@ -73,16 +76,10 @@ fun MovieActionButton(
             vertical = 10.dp
         ),
         colors = ButtonDefaults.filledTonalButtonColors(
-            containerColor = if (isSelected) {
-                selectedColor
-            } else {
-                MovaraSurfaceSecondary
-            },
-            contentColor = if (isSelected) {
-                MovaraBackground
-            } else {
-                MovaraTextSecondary
-            }
+            containerColor = containerColor,
+            contentColor = contentColor,
+            disabledContainerColor = containerColor,
+            disabledContentColor = contentColor
         )
     ) {
         Icon(
