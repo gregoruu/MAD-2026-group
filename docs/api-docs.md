@@ -1,27 +1,44 @@
 # TMDB API layer
 
-Movara reads all movie data from [TMDB](https://developer.themoviedb.org/docs). There is no
-Movara server; the Android app calls TMDB directly. The code lives in
-`frontend/app/src/main/kotlin/ee/movara/app/data/remote`.
+Movara reads all movie data from [TMDB](https://developer.themoviedb.org/docs). The app does
+not call TMDB directly: every request goes to the TMDB proxy in `backend/`, a Cloudflare
+Worker that adds the API key and forwards the request to `https://api.themoviedb.org/3`.
+The app code lives in `frontend/app/src/main/kotlin/ee/movara/app/data/remote`, the proxy
+in `backend/src/index.ts`.
 
 ## The client
 
 | Piece | File | What it is |
 | --- | --- | --- |
-| Base URL | `TmdbNetwork.kt` | `https://api.themoviedb.org/3/` |
+| Base URL | `frontend/app/build.gradle.kts` | `BuildConfig.TMDB_BASE_URL`, the proxy for the build type (see below) |
 | HTTP client | `TmdbNetwork.kt` | OkHttp, 10 s connect timeout, 20 s read timeout |
-| Authentication | `TmdbApiKeyInterceptor.kt` | Adds `api_key` to the query string of every request |
 | Endpoints | `TmdbApiService.kt` | Retrofit interface, one `suspend` function per endpoint |
 | Parsing | `TmdbJson.kt` | kotlinx.serialization, `ignoreUnknownKeys` and `coerceInputValues` on |
 | Wiring | `AppContainer.kt` | One shared client and one service for the whole app |
 
-The app holds a **v3 API key**, read from `local.properties` as `BuildConfig.TMDB_API_KEY`.
-See section 3 of `frontend/README.md` for adding it and
-[decision 1](decisions/0001-tmdb-api-key-in-the-client.md) for why the key sits in the
-client at all. No service function takes the key as a parameter — the interceptor adds it,
-so a new endpoint cannot forget it.
+| Build type | Base URL |
+| --- | --- |
+| `debug`, `staging` | `https://movara-tmdb-proxy-staging.movara.workers.dev/` |
+| `release` | `https://movara-tmdb-proxy-production.movara.workers.dev/` |
+
+The app holds **no API key**. Requests leave the phone without one, and the proxy adds the
+key from a Cloudflare secret. No build of the app contains the key, and developers do not
+need a key of their own.
 
 Network access requires the `INTERNET` permission, declared in `AndroidManifest.xml`.
+
+## The proxy
+
+The proxy forwards only the five endpoints below, each with only the query parameters and
+values the app sends: `query` is not blank and at most 100 characters, `page` is 1 to 500,
+`sort_by` is only `popularity.desc`, `with_genres` is one genre id and `append_to_response`
+is only `credits`. Any other request is rejected before it reaches TMDB. The full rules,
+deployment and secret handling are in `backend/README.md`.
+
+A new endpoint, parameter or value therefore needs two changes: the function on
+`TmdbApiService`, and the rule in `ENDPOINTS` in `backend/src/index.ts`. The proxy has to be
+deployed with the new rule before an app build that uses it, otherwise the proxy answers
+`400`.
 
 ## Endpoints
 
@@ -51,9 +68,19 @@ and are loaded by the image loader from the paths in the responses.
 ## Results and failures
 
 Every function suspends and returns a parsed response. A request that fails throws:
-`retrofit2.HttpException` for a non-2xx answer (401 for a missing or wrong key, 404 for an
-unknown movie), `java.io.IOException` when the phone is offline or TMDB does not answer, and
-`kotlinx.serialization.SerializationException` for a response that cannot be parsed.
+`retrofit2.HttpException` for a non-2xx answer, `java.io.IOException` when the phone is
+offline or the proxy does not answer, and `kotlinx.serialization.SerializationException`
+for a response that cannot be parsed.
+
+| Status | Comes from | Means |
+| --- | --- | --- |
+| `400` | Proxy | The request breaks a proxy rule; the app and the proxy rules are out of step |
+| `401` | TMDB | The key in the proxy's secret is wrong or revoked |
+| `404` | TMDB or proxy | An unknown movie, or a path the proxy does not forward |
+| `500` | Proxy | The proxy has no `TMDB_API_KEY` secret |
+| `502` | Proxy | The proxy could not reach TMDB |
+
+TMDB's own error answers pass through the proxy unchanged.
 
 Callers above the data layer use `MovieRepository` and never see those exceptions.
 `RepositoryResult.Error` contains a safe message, category (invalid input, network,
@@ -90,23 +117,25 @@ An empty valid page is a successful response and can be cached.
 With `BuildConfig.ENABLE_HTTP_LOGGING` the client logs request and response bodies. The flag
 is `true` for debug and staging and `false` for release, so a shipped build logs nothing.
 
-The log redacts the value of `api_key`, so the key is not readable in logcat even on a
-staging build handed to someone else.
+The requests carry no API key, so the log contains none.
 
 ## Tests
 
 `TmdbApiServiceTest` runs every endpoint against a local MockWebServer and checks the
-request that leaves the client, the parsed response, the API key on each request and the
-redaction in the log.
+request that leaves the client, the parsed response and that no request carries an
+`api_key`.
 
-`TmdbApiServiceLiveTest` calls the real TMDB API and parses the answer. It is the only test
-that goes out to the network, so it is skipped unless the run asks for it with
-`-PrunLiveTmdbTests` (or a `RUN_LIVE_TMDB_TESTS` environment variable on a build server):
+`TmdbApiServiceLiveTest` calls the real TMDB API through the staging proxy and parses the
+answer. It is the only app test that goes out to the network, so it is skipped unless the
+run asks for it with `-PrunLiveTmdbTests` (or a `RUN_LIVE_TMDB_TESTS` environment variable
+on a build server):
 
 ```
 ./gradlew :app:testDebugUnitTest -PrunLiveTmdbTests --tests "*TmdbApiServiceLiveTest"
 ```
 
 A plain `./gradlew test` leaves it out, so the ordinary test run does not depend on the
-network or on TMDB being up. With the switch on but no key configured, the test fails
-instead of being skipped.
+network or on the proxy being up.
+
+The proxy has its own tests in `backend/`. They replace `fetch` with a mock, so they never
+call TMDB; run them with `npm test` in `backend/`.
