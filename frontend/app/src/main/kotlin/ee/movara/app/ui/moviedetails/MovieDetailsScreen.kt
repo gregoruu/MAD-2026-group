@@ -4,6 +4,7 @@ package ee.movara.app.ui.moviedetails
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
@@ -14,6 +15,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -44,62 +46,35 @@ fun MovieDetailsScreen(
             .background(MovaraBackground)
     ) {
         val isMediumScreen = maxWidth >= 600.dp
-        val screenPadding =
-            if (isMediumScreen) 24.dp else 20.dp
+        val screenPadding = if (isMediumScreen) 24.dp else 20.dp
 
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
         ) {
-            // Back
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(
-                        horizontal = screenPadding,
-                        vertical = 8.dp
-                    ),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(
-                    onClick = onBack,
-                    modifier = Modifier.size(48.dp)
-                ) {
-                    Icon(
-                        painter = painterResource(
-                            R.drawable.ic_ui_arrow_back
-                        ),
-                        contentDescription = "Back",
-                        tint = MovaraText,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-            }
-
             if (isMediumScreen) {
-                // Medium screen: movie poster on the left, details on the right
+                // Poster and information side by side
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = screenPadding),
+                        .padding(
+                            horizontal = screenPadding,
+                            vertical = 16.dp
+                        ),
                     horizontalArrangement =
                         Arrangement.spacedBy(24.dp),
                     verticalAlignment = Alignment.Top
                 ) {
-                    Box(
+                    MovieHero(
+                        movie = movie,
+                        onBack = onBack,
+                        usePoster = true,
                         modifier = Modifier
                             .width(280.dp)
                             .height(420.dp)
                             .clip(RoundedCornerShape(12.dp))
-                    ) {
-                        TmdbImage(
-                            path = movie.posterPath
-                                ?: movie.backdropPath,
-                            modifier = Modifier.fillMaxSize(),
-                            size = "w780"
-                        )
-                    }
+                    )
 
                     MovieInformation(
                         movie = movie,
@@ -113,32 +88,15 @@ fun MovieDetailsScreen(
                     )
                 }
             } else {
-                // Phone screen: full-width image
-                Box(
+                // Image, back button and title in one
+                MovieHero(
+                    movie = movie,
+                    onBack = onBack,
+                    usePoster = false,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(260.dp)
-                ) {
-                    TmdbImage(
-                        path = movie.backdropPath
-                            ?: movie.posterPath,
-                        modifier = Modifier.matchParentSize(),
-                        size = "w780"
-                    )
-
-                    Box(
-                        modifier = Modifier
-                            .matchParentSize()
-                            .background(
-                                Brush.verticalGradient(
-                                    0f to Color.Transparent,
-                                    0.5f to MovaraBackground
-                                        .copy(alpha = 0.3f),
-                                    1f to MovaraBackground
-                                )
-                            )
-                    )
-                }
+                )
 
                 MovieInformation(
                     movie = movie,
@@ -162,6 +120,78 @@ fun MovieDetailsScreen(
     }
 }
 
+// Shared section with image, gradient, back button and title
+@Composable
+private fun MovieHero(
+    movie: MovieDetails,
+    onBack: () -> Unit,
+    usePoster: Boolean,
+    modifier: Modifier = Modifier
+) {
+    Box(modifier = modifier) {
+        TmdbImage(
+            path = if (usePoster) {
+                movie.posterPath ?: movie.backdropPath
+            } else {
+                movie.backdropPath ?: movie.posterPath
+            },
+            modifier = Modifier.matchParentSize(),
+            size = "w780"
+        )
+
+        // Gradient keeps the title readable
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color.Black.copy(alpha = 0.45f),
+                            Color.Transparent,
+                            MovaraBackground.copy(alpha = 0.95f)
+                        )
+                    )
+                )
+        )
+
+        IconButton(
+            onClick = onBack,
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(12.dp)
+                .size(48.dp)
+                .background(
+                    color = Color.Black.copy(alpha = 0.35f),
+                    shape = CircleShape
+                )
+        ) {
+            Icon(
+                painter = painterResource(
+                    R.drawable.ic_ui_arrow_back
+                ),
+                contentDescription = "Back",
+                tint = Color.White,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+
+        // Title overlaps the lower part of the image
+        Text(
+            text = movie.title,
+            style = MaterialTheme.typography.displayLarge,
+            color = Color.White,
+            maxLines = if (usePoster) 4 else 3,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(
+                    horizontal = if (usePoster) 16.dp else 20.dp,
+                    vertical = 16.dp
+                )
+        )
+    }
+}
+
 @Composable
 private fun MovieInformation(
     movie: MovieDetails,
@@ -177,13 +207,6 @@ private fun MovieInformation(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Full movie title
-        Text(
-            text = movie.title,
-            style = MaterialTheme.typography.displayLarge,
-            color = MovaraText
-        )
-
         // Year, runtime and rating
         val metadata = buildList {
             movie.releaseYear?.let { year ->
@@ -237,29 +260,30 @@ private fun MovieInformation(
                 )
             }
 
-        // Like / Watch Later / Watched
-        Column(
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+        // Compact action buttons that wrap when needed
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement =
+                Arrangement.spacedBy(8.dp),
+            verticalArrangement =
+                Arrangement.spacedBy(8.dp)
         ) {
             MovieActionButton(
                 action = MovieAction.LIKE,
                 isSelected = isLiked,
-                onClick = onLikeClick,
-                modifier = Modifier.fillMaxWidth()
+                onClick = onLikeClick
             )
 
             MovieActionButton(
                 action = MovieAction.WATCH_LATER,
                 isSelected = isWatchLater,
-                onClick = onWatchLaterClick,
-                modifier = Modifier.fillMaxWidth()
+                onClick = onWatchLaterClick
             )
 
             MovieActionButton(
                 action = MovieAction.WATCHED,
                 isSelected = isWatched,
-                onClick = onWatchedClick,
-                modifier = Modifier.fillMaxWidth()
+                onClick = onWatchedClick
             )
         }
 
@@ -279,7 +303,7 @@ private fun MovieInformation(
             color = MovaraTextSecondary
         )
 
-        // Show only the first five actors
+        // First five actors
         val actors = movie.topCast
             .filter { it.isNotBlank() }
             .take(5)
@@ -301,7 +325,7 @@ private fun MovieInformation(
     }
 }
 
-// Sample
+// Preview data
 private val previewMovie = MovieDetails(
     id = 1,
     title = "Midnight Orbit",
@@ -345,7 +369,9 @@ private fun MovieDetailsPhonePreview() {
             isLiked = liked,
             isWatchLater = watchLater,
             isWatched = watched,
-            onLikeClick = { liked = !liked },
+            onLikeClick = {
+                liked = !liked
+            },
             onWatchLaterClick = {
                 watchLater = !watchLater
             },
@@ -406,4 +432,3 @@ private fun MovieDetailsMissingDataPreview() {
         )
     }
 }
-
