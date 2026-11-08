@@ -15,7 +15,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -54,7 +53,7 @@ fun MovieDetailsScreen(
                 .verticalScroll(rememberScrollState())
         ) {
             if (isMediumScreen) {
-                // Poster and information side by side
+                // Medium: poster on the left, title and details on the right
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -62,8 +61,7 @@ fun MovieDetailsScreen(
                             horizontal = screenPadding,
                             vertical = 16.dp
                         ),
-                    horizontalArrangement =
-                        Arrangement.spacedBy(24.dp),
+                    horizontalArrangement = Arrangement.spacedBy(24.dp),
                     verticalAlignment = Alignment.Top
                 ) {
                     MovieHero(
@@ -78,6 +76,7 @@ fun MovieDetailsScreen(
 
                     MovieInformation(
                         movie = movie,
+                        showTitle = true,
                         isLiked = isLiked,
                         isWatchLater = isWatchLater,
                         isWatched = isWatched,
@@ -88,18 +87,19 @@ fun MovieDetailsScreen(
                     )
                 }
             } else {
-                // Image, back button and title in one
+                // Phone: title overlaid on the image
                 MovieHero(
                     movie = movie,
                     onBack = onBack,
                     usePoster = false,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(260.dp)
+                        .heightIn(min = 260.dp)
                 )
 
                 MovieInformation(
                     movie = movie,
+                    showTitle = false,
                     isLiked = isLiked,
                     isWatchLater = isWatchLater,
                     isWatched = isWatched,
@@ -120,7 +120,7 @@ fun MovieDetailsScreen(
     }
 }
 
-// Shared section with image, gradient, back button and title
+// Header with image, gradient and back button
 @Composable
 private fun MovieHero(
     movie: MovieDetails,
@@ -139,7 +139,7 @@ private fun MovieHero(
             size = "w780"
         )
 
-        // Gradient keeps the title readable
+        // Gradient for readability
         Box(
             modifier = Modifier
                 .matchParentSize()
@@ -175,26 +175,28 @@ private fun MovieHero(
             )
         }
 
-        // Title overlaps the lower part of the image
-        Text(
-            text = movie.title,
-            style = MaterialTheme.typography.displayLarge,
-            color = Color.White,
-            maxLines = if (usePoster) 4 else 3,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(
-                    horizontal = if (usePoster) 16.dp else 20.dp,
-                    vertical = 16.dp
-                )
-        )
+        if (!usePoster) {
+            Text(
+                text = movie.title,
+                style = MaterialTheme.typography.displayLarge,
+                color = Color.White,
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(
+                        start = 20.dp,
+                        end = 20.dp,
+                        top = 72.dp,
+                        bottom = 16.dp
+                    )
+            )
+        }
     }
 }
 
 @Composable
 private fun MovieInformation(
     movie: MovieDetails,
+    showTitle: Boolean,
     isLiked: Boolean,
     isWatchLater: Boolean,
     isWatched: Boolean,
@@ -207,6 +209,15 @@ private fun MovieInformation(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        // Medium screens show title in the information column
+        if (showTitle) {
+            Text(
+                text = movie.title,
+                style = MaterialTheme.typography.displayLarge,
+                color = MovaraText
+            )
+        }
+
         // Year, runtime and rating
         val metadata = buildList {
             movie.releaseYear?.let { year ->
@@ -260,13 +271,11 @@ private fun MovieInformation(
                 )
             }
 
-        // Compact action buttons that wrap when needed
+        // Compact buttons arranged horizontally
         FlowRow(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement =
-                Arrangement.spacedBy(8.dp),
-            verticalArrangement =
-                Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             MovieActionButton(
                 action = MovieAction.LIKE,
@@ -421,6 +430,60 @@ private fun MovieDetailsMissingDataPreview() {
                 overview = null,
                 director = null,
                 topCast = emptyList()
+            ),
+            isLiked = false,
+            isWatchLater = false,
+            isWatched = false,
+            onLikeClick = {},
+            onWatchLaterClick = {},
+            onWatchedClick = {},
+            onBack = {}
+        )
+    }
+}
+
+// Check a very long title on a phone
+@Preview(
+    name = "Long title - Phone",
+    showBackground = true,
+    widthDp = 412,
+    heightDp = 917
+)
+@Composable
+private fun MovieDetailsLongTitlePhonePreview() {
+    MovaraTheme {
+        MovieDetailsScreen(
+            movie = previewMovie.copy(
+                title = "The Extraordinary Adventures of a Traveler " +
+                        "Who Crossed the Ocean to Discover the Secret " +
+                        "Hidden Beyond the Mountains"
+            ),
+            isLiked = false,
+            isWatchLater = false,
+            isWatched = false,
+            onLikeClick = {},
+            onWatchLaterClick = {},
+            onWatchedClick = {},
+            onBack = {}
+        )
+    }
+}
+
+// Check the same long title on a medium screen
+@Preview(
+    name = "Long title - Medium",
+    showBackground = true,
+    widthDp = 700,
+    heightDp = 900
+)
+@Composable
+private fun MovieDetailsLongTitleMediumPreview() {
+    MovaraTheme {
+        MovieDetailsScreen(
+            movie = previewMovie.copy(
+                title = "The Extraordinary Adventures of a Traveler " +
+                        "Who Crossed the Ocean to Discover the Secret " +
+                        "Hidden Beyond the Mountains"
             ),
             isLiked = false,
             isWatchLater = false,
