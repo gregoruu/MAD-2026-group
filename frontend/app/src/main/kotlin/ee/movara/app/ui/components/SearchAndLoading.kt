@@ -7,6 +7,9 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -27,7 +30,8 @@ fun MovieSearchField(
     query: String,
     onQueryChange: (String) -> Unit,
     modifier: Modifier = Modifier,
-    enabled: Boolean = true
+    enabled: Boolean = true,
+    onSearch: () -> Unit = {}
 ) {
     val shape = RoundedCornerShape(16.dp)
     var focused by remember { mutableStateOf(false) }
@@ -36,6 +40,8 @@ fun MovieSearchField(
         value = query,
         onValueChange = onQueryChange,
         singleLine = true,
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+        keyboardActions = KeyboardActions(onSearch = { onSearch() }),
         enabled = enabled,
         textStyle = MaterialTheme.typography.bodyLarge.copy(
             color = MovaraText
