@@ -19,6 +19,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -34,7 +35,7 @@ class MovieDetailsViewModelTest {
     private val models = mutableListOf<ViewModel>()
     private fun viewModel(repository: MovieRepository): MovieDetailsViewModel {
         val lists = MovieListsViewModel(repository).also { models += it }
-        return MovieDetailsViewModel(123, repository, lists).also { models += it }
+        return MovieDetailsViewModel(123, repository, lists.store).also { models += it }
     }
 
     @Before
@@ -203,14 +204,16 @@ class MovieDetailsViewModelTest {
         assertFalse(viewModel.uiState.value.isLiked)
         assertEquals(
             "Could not save movie",
-            viewModel.uiState.value.actionError
+            models.filterIsInstance<MovieListsViewModel>().single().feedback.first().error
         )
 
-        assertFalse(viewModel.uiState.value.actionsEnabled)
+        assertNull(viewModel.uiState.value.actionError)
+        assertTrue(viewModel.uiState.value.actionsEnabled)
         repository.failSave = false
-        viewModel.retryLists()
+        viewModel.toggleLike()
         advanceUntilIdle()
         assertTrue(viewModel.uiState.value.actionsEnabled)
+        assertTrue(viewModel.uiState.value.isLiked)
 
         assertNull(viewModel.uiState.value.actionError)
     }

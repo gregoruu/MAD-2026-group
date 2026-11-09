@@ -34,7 +34,7 @@ class HomeViewModelTest {
   private val repository = HomeRepository()
   private fun viewModel(): HomeViewModel {
     val lists = MovieListsViewModel(repository).also { models += it }
-    return HomeViewModel(repository, lists).also { models += it }
+    return HomeViewModel(repository, lists.store).also { models += it }
   }
 
   @Before fun setUp() { Dispatchers.setMain(dispatcher) }
@@ -152,9 +152,9 @@ class HomeViewModelTest {
     repository.failSave = true
     val model = viewModel()
     model.toggleWatchLater(movie(100))
-    assertTrue(model.uiState.value.loadFailed)
-    assertFalse(model.uiState.value.actionsEnabled)
-    assertTrue(model.uiState.value.rails.isEmpty())
+    assertFalse(model.uiState.value.loadFailed)
+    assertTrue(model.uiState.value.actionsEnabled)
+    assertEquals(listOf(movie(100)), model.uiState.value.rails.flatMap { it.movies })
     assertFalse(100 in model.uiState.value.watchLaterIds)
     repository.failSave = false
     model.retry()

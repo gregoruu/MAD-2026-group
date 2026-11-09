@@ -7,7 +7,7 @@ import ee.movara.app.data.repository.MovieRepository
 import ee.movara.app.data.repository.RepositoryResult
 import ee.movara.app.domain.model.Movie
 import ee.movara.app.domain.model.MovieDetails
-import ee.movara.app.ui.movies.MovieListsViewModel
+import ee.movara.app.ui.movies.MovieListsStore
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -30,7 +30,7 @@ data class MovieDetailsUiState(
 class MovieDetailsViewModel(
     private val movieId: Int,
     private val repository: MovieRepository,
-    private val movieLists: MovieListsViewModel
+    private val movieLists: MovieListsStore
 ) : ViewModel() {
     private val state = MutableStateFlow(MovieDetailsUiState())
     val uiState = combine(state, movieLists.uiState) { current, saved ->

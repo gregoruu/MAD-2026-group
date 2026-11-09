@@ -7,7 +7,7 @@ import ee.movara.app.data.repository.MovieRepository
 import ee.movara.app.data.repository.RepositoryResult
 import ee.movara.app.domain.model.Movie
 import ee.movara.app.domain.model.MoviePage
-import ee.movara.app.ui.movies.MovieListsViewModel
+import ee.movara.app.ui.movies.MovieListsStore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.collectLatest
@@ -41,7 +41,7 @@ data class HomeUiState(
 /** Recommendations use recent likes; all membership comes from the shared Room snapshot. */
 class HomeViewModel(
   private val repository: MovieRepository,
-  private val movieLists: MovieListsViewModel
+  private val movieLists: MovieListsStore
 ) : ViewModel() {
   private val state = MutableStateFlow(HomeUiState())
   private val refresh = MutableStateFlow(0)

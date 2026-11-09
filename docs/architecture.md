@@ -62,7 +62,9 @@ cached results may be stale. Cancellation propagates normally.
 Saved-list observations, counts and membership are flows of results containing domain
 data. Saving a watched membership also removes Watch Later inside one DAO transaction;
 liked membership remains independent. `observeLists()` reads all memberships in one
-query, providing a consistent snapshot to the navigation-scoped `MovieListsViewModel`.
+query, providing a consistent snapshot to `MovieListsStore`, whose coroutine scope is
+owned by the navigation-scoped `MovieListsViewModel`. Home and Movie Details depend on
+the store rather than another ViewModel.
 Home, My Movies and Movie Details share that state and write through the repository.
 Home retains its Spotlight card and recommendation rails, using recommendations for
 up to five recent likes and trending when there are no likes. Watched changes refilter
@@ -70,6 +72,14 @@ all fetched rails without another TMDB request. Recommendations stay hidden unti
 saved-list snapshot loads successfully, including during retries and storage errors.
 Search retains its query submission, pagination and movie navigation. Connectivity UI
 (#43) and image caching (#48) remain separate features.
+
+Write failures preserve the last Room snapshot and leave recommendations and list
+actions available. The store emits one feedback event per failed write or confirmed
+change. Navigation owns the shared SnackbarHost: successful changes show confirmation,
+removals offer Undo, and failed writes offer Retry for the same operation. Only loading,
+observation errors and a pending write for the same movie block membership actions.
+My Movies uses counted segmented tabs, one list on compact screens and two columns
+from 600 dp, with independent saved scroll positions per category.
 
 The endpoints, the failure behaviour and the logging rules are in
 [docs/api-docs.md](api-docs.md).

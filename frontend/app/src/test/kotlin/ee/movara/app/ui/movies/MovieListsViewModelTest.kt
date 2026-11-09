@@ -23,7 +23,7 @@ import org.junit.Test
 class MovieListsViewModelTest {
   private val models = mutableListOf<ViewModel>()
   private fun lists() = MovieListsViewModel(repository).also { models += it }
-  private fun home(lists: MovieListsViewModel) = HomeViewModel(repository, lists).also { models += it }
+  private fun home(lists: MovieListsViewModel) = HomeViewModel(repository, lists.store).also { models += it }
   private val movie = Movie(603, "The Matrix", null, 1999)
   private val repository = ListsRepository()
 
@@ -47,23 +47,65 @@ class MovieListsViewModelTest {
     assertEquals(1, repository.trendingCalls)
   }
 
-  @Test fun failedWritePreservesSnapshotAndBlocksActionsUntilRetry() = runTest {
+  @Test fun failedWritePreservesSnapshotAndRecommendationsAndAllowsRetry() = runTest {
+    repository.movies = listOf(movie)
+    repository.snapshots.value = RepositoryResult.Success(MovieLists(watchLater = listOf(movie)), DataSource.LOCAL)
     val lists = lists()
+    val home = home(lists)
+    val details = MovieDetailsViewModel(movie.id, repository, lists.store).also { models += it }
     advanceUntilIdle()
     repository.writeResult = RepositoryResult.Error(ErrorCategory.DATABASE, "Storage unavailable")
     lists.setMembership(movie, MovieListType.WATCHED, true)
     advanceUntilIdle()
-    assertEquals(MovieLists(), lists.uiState.value.lists)
-    assertEquals("Storage unavailable", lists.uiState.value.storageError)
-    assertFalse(lists.uiState.value.actionsEnabled)
+    assertEquals(MovieLists(watchLater = listOf(movie)), lists.uiState.value.lists)
+    assertNull(lists.uiState.value.storageError)
+    assertTrue(lists.uiState.value.actionsEnabled)
+    assertTrue(details.uiState.value.actionsEnabled)
+    assertEquals(movie, home.uiState.value.topPick)
+    assertFalse(home.uiState.value.loadFailed)
+    assertEquals("Storage unavailable", lists.feedback.first().error)
     assertTrue(lists.uiState.value.pendingIds.isEmpty())
     lists.setMembership(movie, MovieListType.LIKED, true)
     advanceUntilIdle()
-    assertEquals(1, repository.writes)
-    lists.retry()
+    assertEquals(2, repository.writes)
+    repository.writeResult = RepositoryResult.Success(Unit, DataSource.LOCAL)
+    lists.setMembership(movie, MovieListType.LIKED, true)
     advanceUntilIdle()
+    repository.snapshots.value = RepositoryResult.Success(
+      MovieLists(liked = listOf(movie), watchLater = listOf(movie)), DataSource.LOCAL
+    )
+    advanceUntilIdle()
+    // The second failure remains a separate event even when its message is identical.
+    assertNotNull(lists.feedback.first().error)
+    assertNull(lists.feedback.first().error)
     assertTrue(lists.uiState.value.actionsEnabled)
     assertNull(lists.uiState.value.storageError)
+    assertEquals(listOf(movie), lists.uiState.value.lists.liked)
+  }
+
+  @Test fun removalFeedbackWaitsForConfirmationAndUndoRestoresMembership() = runTest {
+    repository.snapshots.value = RepositoryResult.Success(MovieLists(watchLater = listOf(movie)), DataSource.LOCAL)
+    val lists = lists()
+    val feedback = mutableListOf<MovieListFeedback>()
+    backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { lists.feedback.toList(feedback) }
+    advanceUntilIdle()
+    lists.setMembership(movie, MovieListType.WATCH_LATER, false)
+    advanceUntilIdle()
+    assertTrue(feedback.isEmpty())
+    repository.snapshots.value = RepositoryResult.Success(MovieLists(), DataSource.LOCAL)
+    advanceUntilIdle()
+    val removed = feedback.single()
+    assertFalse(removed.selected)
+    assertNull(removed.error)
+    assertTrue(lists.uiState.value.pendingIds.isEmpty())
+
+    lists.setMembership(removed.movie, removed.type, true)
+    advanceUntilIdle()
+    repository.snapshots.value = RepositoryResult.Success(MovieLists(watchLater = listOf(movie)), DataSource.LOCAL)
+    advanceUntilIdle()
+    assertEquals(listOf(movie), lists.uiState.value.lists.watchLater)
+    assertTrue(feedback.last().selected)
+    assertEquals(2, repository.writes)
   }
 
   @Test fun successfulWriteWaitsForRoomConfirmationAndIgnoresRepeatedTap() = runTest {
@@ -163,7 +205,7 @@ class MovieListsViewModelTest {
     repository.movies = listOf(movie)
     val lists = lists()
     val home = home(lists)
-    val details = MovieDetailsViewModel(movie.id, repository, lists).also { models += it }
+    val details = MovieDetailsViewModel(movie.id, repository, lists.store).also { models += it }
     advanceUntilIdle()
     details.toggleWatched()
     advanceUntilIdle()

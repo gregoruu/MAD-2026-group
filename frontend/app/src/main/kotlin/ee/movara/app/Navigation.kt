@@ -44,6 +44,13 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.navigation.toRoute
 import ee.movara.app.ui.movies.MovieListsViewModel
 import ee.movara.app.ui.movies.SavedMoviesScreen
+import ee.movara.app.ui.movies.label
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import ee.movara.app.ui.home.HomeScreen
 import ee.movara.app.ui.home.HomeViewModel
 import ee.movara.app.ui.search.SearchScreen
@@ -63,11 +70,30 @@ fun MainNavigation(container: AppContainer) {
   val navController = rememberNavController()
   val movieLists: MovieListsViewModel = viewModel { MovieListsViewModel(container.movieRepository) }
   val listsState by movieLists.uiState.collectAsStateWithLifecycle()
+  val snackbarHost = remember { SnackbarHostState() }
+  LaunchedEffect(movieLists) {
+    movieLists.feedback.collect { feedback ->
+      val result = snackbarHost.showSnackbar(
+        message = feedback.error?.let { "Could not update ${feedback.type.label}: $it" }
+          ?: if (feedback.selected) "Added to ${feedback.type.label}" else "Removed from ${feedback.type.label}",
+        actionLabel = if (feedback.error != null) "Retry" else if (!feedback.selected) "Undo" else null,
+        withDismissAction = true,
+        duration = SnackbarDuration.Short
+      )
+      if (result == SnackbarResult.ActionPerformed) {
+        movieLists.setMembership(
+          feedback.movie, feedback.type,
+          if (feedback.error != null) feedback.selected else true
+        )
+      }
+    }
+  }
   val currentDestination =
     navController.currentBackStackEntryAsState().value?.destination
 
 //Shared layout and bottom navigation bar
   Scaffold(
+    snackbarHost = { SnackbarHost(snackbarHost) },
     bottomBar = {
       val hideBottomBar =
         currentDestination?.hasRoute<AboutRoute>() == true ||
@@ -117,7 +143,7 @@ fun MainNavigation(container: AppContainer) {
     ) {
 
       composable<HomeRoute> {
-        val homeViewModel = viewModel { HomeViewModel(container.movieRepository, movieLists) }
+        val homeViewModel = viewModel { HomeViewModel(container.movieRepository, movieLists.store) }
         HomeScreen(
           viewModel = homeViewModel,
           onSearch = { navController.navigate(SearchRoute) },
@@ -212,7 +238,7 @@ fun MainNavigation(container: AppContainer) {
           MovieDetailsViewModel(
             movieId = route.movieId,
             repository = container.movieRepository,
-            movieLists = movieLists
+            movieLists = movieLists.store
           )
         }
 
