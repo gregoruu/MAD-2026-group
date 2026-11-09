@@ -11,6 +11,16 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.onFirst
+import androidx.compose.ui.test.onNodeWithTag
+
+
 
 class SelectedGenreScreenTest {
 
@@ -96,10 +106,24 @@ class SelectedGenreScreenTest {
                 .fetchSemanticsNodes()
                 .isNotEmpty()
         )
+
+        val bounds = composeRule
+            .onAllNodesWithTag("genre_loading_placeholder")
+            .onFirst()
+            .fetchSemanticsNode()
+            .boundsInRoot
+
+        assertEquals(
+            144f / 208f,
+            bounds.width / bounds.height,
+            0.05f
+        )
+
     }
 
+
     @Test
-    fun paginationLoadingShowsPlaceholdersWithoutSpinner() {
+    fun paginationLoadingKeepsMoviesAndAnnouncesLoading() {
         composeRule.setContent {
             MovaraTheme {
                 SelectedGenreScreen(
@@ -114,11 +138,35 @@ class SelectedGenreScreenTest {
             }
         }
 
+        // Existing movie remains visible.
+        composeRule.onNodeWithText("Example")
+            .assertIsDisplayed()
+
+        // Loading placeholders are present.
         assertTrue(
             composeRule
-                .onAllNodesWithTag("genre_loading_more_placeholder")
+                .onAllNodesWithTag(
+                    "genre_loading_more_placeholder"
+                )
                 .fetchSemanticsNodes()
                 .isNotEmpty()
         )
+
+        // One accessible loading announcement.
+        composeRule.onNodeWithTag("genre_loading_more_status")
+            .assert(
+                SemanticsMatcher.expectValue(
+                    SemanticsProperties.LiveRegion,
+                    LiveRegionMode.Polite
+                )
+            )
+
+        // The old indeterminate spinner is no longer present.
+        composeRule.onAllNodes(
+            SemanticsMatcher.keyIsDefined(
+                SemanticsProperties.ProgressBarRangeInfo
+            )
+        ).assertCountEquals(0)
     }
+
 }

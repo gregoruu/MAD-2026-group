@@ -37,6 +37,7 @@ data class HomeUiState(
       it.movies.firstOrNull()
     }
 
+
   val contentState: UiState<List<HomeRail>>
     get() = when {
       loading -> UiState.Loading
@@ -45,9 +46,16 @@ data class HomeUiState(
         "Could not load recommendations"
       )
 
-      rails.isEmpty() -> UiState.Empty
+      // At least one rail contains usable movies.
+      rails.any { it.movies.isNotEmpty() } ->
+        UiState.Success(rails)
 
-      else -> UiState.Success(rails)
+      // No usable movies, but at least one request failed.
+      rails.any { it.failed } ->
+        UiState.Error("Could not load recommendations")
+
+      // No rails, or all successful rails are empty.
+      else -> UiState.Empty
     }
 }
 

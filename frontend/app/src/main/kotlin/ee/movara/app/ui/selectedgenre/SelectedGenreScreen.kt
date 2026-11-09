@@ -26,6 +26,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.testTag
 import ee.movara.app.ui.state.UiState
 import ee.movara.app.ui.state.listUiState
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 
 
 // displays movies belonging to the selected genre
@@ -144,7 +147,7 @@ fun SelectedGenreScreen(
                                 MaterialTheme.typography.bodyLarge
                         )
 
-                        // Only show retry when it is functional.
+                        // Only show retry when it is functional
                         if (onRetry != null) {
                             Spacer(Modifier.height(16.dp))
 
@@ -274,8 +277,25 @@ fun SelectedGenreScreen(
                         }
 
 
-// Show poster placeholders while loading the next page
+
+// Keep existing movies visible while loading the next page.
                         if (isLoadingMore) {
+                            item(span = { GridItemSpan(maxLineSpan) }) {
+                                Text(
+                                    text = stringResource(
+                                        R.string.selected_genre_loading_more
+                                    ),
+                                    color = MovaraTextSecondary,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .testTag("genre_loading_more_status")
+                                        .semantics {
+                                            liveRegion = LiveRegionMode.Polite
+                                        }
+                                )
+                            }
+
                             items(columns) {
                                 PulsingPlaceholder(
                                     modifier = Modifier
@@ -286,6 +306,7 @@ fun SelectedGenreScreen(
                                 )
                             }
                         }
+
 
                     }
                 }
