@@ -23,6 +23,7 @@ import ee.movara.app.ui.theme.*
 import kotlinx.coroutines.flow.first
 import ee.movara.app.domain.model.GenreCatalog
 import androidx.compose.ui.res.stringResource
+import ee.movara.app.ui.components.EmptyState
 import androidx.compose.ui.platform.testTag
 import ee.movara.app.ui.state.UiState
 import ee.movara.app.ui.state.listUiState
@@ -168,10 +169,8 @@ fun SelectedGenreScreen(
                             .padding(24.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            text = stringResource(R.string.selected_genre_empty),
-                            color = MovaraTextSecondary,
-                            style = MaterialTheme.typography.bodyLarge
+                        EmptyState(
+                            message = stringResource(R.string.selected_genre_empty)
                         )
                     }
                 }

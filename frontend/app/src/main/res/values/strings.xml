@@ -60,4 +60,12 @@
     <string name="selected_genre_back">All Genres</string>
     <string name="selected_genre_retry">Try again</string>
     <string name="selected_genre_empty">No movies found for this genre.</string>
+
+    <string name="genres_empty">Genres are unavailable right now.</string>
+    <string name="my_movies_empty_liked">You have not liked any movies yet.</string>
+    <string name="my_movies_empty_watched">You have not marked any movies as watched yet.</string>
+    <string name="my_movies_empty_watch_later">
+    Your Watch Later list is empty.
+</string>
+
 </resources>

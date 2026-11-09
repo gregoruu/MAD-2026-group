@@ -11,9 +11,15 @@ import androidx.compose.ui.test.performImeAction
 import ee.movara.app.domain.model.Movie
 import ee.movara.app.ui.theme.MovaraTheme
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
+import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.onNodeWithTag
 
 class SearchScreenTest {
   @get:Rule val compose = createComposeRule()
@@ -70,24 +76,36 @@ class SearchScreenTest {
         )
       }
     }
-    compose.onNodeWithText("No movies found.").assertDoesNotExist()
+    compose.onNodeWithText("No results found").assertDoesNotExist()
 
     compose.runOnIdle {
       state.value = SearchUiState(query = "Unknown", isLoading = true)
     }
     compose.onNodeWithContentDescription("Searching…").assertIsDisplayed()
-    compose.onNodeWithText("No movies found.").assertDoesNotExist()
+    compose.onNodeWithText("No results found").assertDoesNotExist()
 
     compose.runOnIdle {
       state.value = SearchUiState(query = "Unknown", requestError = "Network error")
     }
     compose.onNodeWithText("Network error").assertIsDisplayed()
-    compose.onNodeWithText("No movies found.").assertDoesNotExist()
+    compose.onNodeWithText("No results found").assertDoesNotExist()
 
     compose.runOnIdle {
       state.value = SearchUiState(query = "Unknown", page = 1)
     }
-    compose.onNodeWithText("No movies found.").assertIsDisplayed()
+    compose.onNodeWithText("No results found").assertIsDisplayed()
+    compose.onNodeWithTag("search_empty_state")
+      .assertIsDisplayed()
+
+    compose.onNodeWithTag("empty_state_icon")
+      .assertIsDisplayed()
+    compose.onNodeWithTag("search_empty_state")
+      .assert(
+        SemanticsMatcher.expectValue(
+          SemanticsProperties.LiveRegion,
+          LiveRegionMode.Polite
+        )
+      )
   }
 
   @Test fun clearButtonSendsEmptyQuery() {

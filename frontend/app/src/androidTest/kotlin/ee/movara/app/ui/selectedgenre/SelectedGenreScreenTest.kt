@@ -1,6 +1,7 @@
 
 package ee.movara.app.ui.selectedgenre
 
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -11,14 +12,13 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
-import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onFirst
-import androidx.compose.ui.test.onNodeWithTag
 
 
 
@@ -86,6 +86,28 @@ class SelectedGenreScreenTest {
         }
     }
 
+    
+    @Test
+    fun emptyGenreShowsMessageAndIcon() {
+        composeRule.setContent {
+            MovaraTheme {
+                SelectedGenreScreen(
+                    genreId = 28,
+                    movies = emptyList(),
+                    onBack = {},
+                    onMovieClick = {}
+                )
+            }
+        }
+
+        composeRule.onNodeWithText(
+            "No movies found for this genre."
+        ).assertIsDisplayed()
+
+        composeRule.onNodeWithTag("empty_state_icon")
+            .assertIsDisplayed()
+    }
+
     @Test
     fun initialLoadingShowsPosterShapedPlaceholders() {
         composeRule.setContent {
@@ -118,7 +140,6 @@ class SelectedGenreScreenTest {
             bounds.width / bounds.height,
             0.05f
         )
-
     }
 
 

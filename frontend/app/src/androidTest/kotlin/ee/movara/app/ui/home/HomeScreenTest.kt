@@ -11,6 +11,7 @@ import ee.movara.app.ui.theme.MovaraTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
+import androidx.compose.ui.test.onNodeWithTag
 
 class HomeScreenTest {
   @get:Rule val compose = createComposeRule()
@@ -64,4 +65,60 @@ class HomeScreenTest {
     compose.onNodeWithText("Saved").performScrollTo().assertIsDisplayed()
     compose.onNodeWithText("Because you liked Interstellar").performScrollTo().assertIsDisplayed()
   }
+
+  @Test
+  fun noRecommendationsShowsEmptyState() {
+    compose.setContent {
+      MovaraTheme {
+        HomeContent(
+          state = HomeUiState(
+            loading = false,
+            rails = emptyList()
+          ),
+          onSearch = {},
+          onMovieClick = {},
+          onLike = {},
+          onWatchLater = {},
+          onRetry = {}
+        )
+      }
+    }
+
+    compose.onNodeWithText(
+      "No recommendations available right now. Try again later."
+    ).performScrollTo().assertIsDisplayed()
+
+    compose.onNodeWithTag("empty_state_icon")
+      .assertIsDisplayed()
+  }
+
+
+  @Test
+  fun emptyRecommendationRailShowsMessageAndIcon() {
+    compose.setContent {
+      MovaraTheme {
+        HomeContent(
+          state = HomeUiState(
+            loading = false,
+            rails = listOf(
+              HomeRail(movies = emptyList())
+            )
+          ),
+          onSearch = {},
+          onMovieClick = {},
+          onLike = {},
+          onWatchLater = {},
+          onRetry = {}
+        )
+      }
+    }
+
+    compose.onNodeWithText(
+      "No recommendations available right now. Try again later."
+    ).performScrollTo().assertIsDisplayed()
+
+    compose.onNodeWithTag("empty_state_icon")
+      .assertExists()
+  }
+
 }
