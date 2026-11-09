@@ -12,17 +12,28 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import ee.movara.app.ui.state.UiState
+import ee.movara.app.ui.state.listUiState
 
 //UI state for the Selected Genre screen
 
+
 data class SelectedGenreUiState(
     val movies: List<Movie> = emptyList(),
-    val isLoading: Boolean = false,
+    val isLoading: Boolean = true,
     val isLoadingMore: Boolean = false,
     val errorMessage: String? = null,
     val loadMoreError: String? = null,
     val hasMore: Boolean = false
-)
+) {
+    val contentState: UiState<List<Movie>>
+        get() = listUiState(
+            items = movies,
+            loading = isLoading,
+            errorMessage = errorMessage
+        )
+}
+
 
 //Loads movies belonging to the selected TMDB genre
 //Uses MovieRepository rather than calling the API directly

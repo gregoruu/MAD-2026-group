@@ -1,5 +1,6 @@
 package ee.movara.app.ui.home
 
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -13,6 +14,7 @@ import ee.movara.app.ui.theme.MovaraTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
+import androidx.compose.ui.test.onNodeWithTag
 
 class HomeScreenTest {
   @get:Rule val compose = createComposeRule()
@@ -123,4 +125,72 @@ class HomeScreenTest {
     compose.onNodeWithText("Your taste").performClick()
     compose.runOnIdle { assertEquals(true, edited) }
   }
+
+  @Test
+  fun noRecommendationsShowsEmptyState() {
+    compose.setContent {
+      MovaraTheme {
+        HomeContent(
+          state = HomeUiState(
+            loading = false,
+            recommendations = emptyList()
+          ),
+          onSearch = {},
+          onMovieClick = {},
+          onLike = {},
+          onWatchLater = {},
+          onRetry = {}
+        )
+      }
+    }
+
+    compose.onNodeWithText(
+      "No recommendations available right now. Try again later."
+    ).performScrollTo().assertIsDisplayed()
+
+    compose.onNodeWithTag("empty_state_icon")
+      .assertIsDisplayed()
+  }
+
+
+  @Test
+  fun recommendationsBecomingEmptyShowMessageAndIcon() {
+    val state = mutableStateOf(HomeUiState(
+      loading = false, recommendations = listOf(MovieRecommendation(movie))
+    ))
+    compose.setContent {
+      MovaraTheme {
+        HomeContent(
+          state = state.value,
+          onSearch = {},
+          onMovieClick = {},
+          onLike = {},
+          onWatchLater = {},
+          onRetry = {}
+        )
+      }
+    }
+
+    compose.onNodeWithText("Arrival").performScrollTo().assertIsDisplayed()
+    compose.runOnIdle { state.value = state.value.copy(recommendations = emptyList()) }
+    compose.onNodeWithText(
+      "No recommendations available right now. Try again later."
+    ).performScrollTo().assertIsDisplayed()
+
+    compose.onNodeWithTag("empty_state_icon")
+      .assertIsDisplayed()
+  }
+
+  @Test fun loadingShowsPlaceholdersWithoutAnEmptyMessageOrIcon() {
+    compose.setContent {
+      MovaraTheme {
+        HomeContent(HomeUiState(), {}, {}, {}, {}, {})
+      }
+    }
+    compose.onNodeWithTag("home_loading").assertIsDisplayed()
+    compose.onNodeWithTag("empty_state_icon").assertDoesNotExist()
+    compose.onNodeWithText("No recommendations available right now. Try again later.")
+      .assertDoesNotExist()
+  }
+
 }

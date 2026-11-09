@@ -30,7 +30,6 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
@@ -45,6 +44,10 @@ import ee.movara.app.ui.theme.MovaraBackground
 import ee.movara.app.ui.theme.MovaraGold
 import ee.movara.app.ui.theme.MovaraText
 import ee.movara.app.ui.theme.MovaraTextSecondary
+import androidx.compose.ui.platform.testTag
+import ee.movara.app.ui.components.EmptyState
+import androidx.compose.ui.semantics.LiveRegionMode
+import ee.movara.app.ui.state.UiState
 
 @Composable
 fun SearchScreen(
@@ -149,12 +152,18 @@ fun SearchScreen(
               Text(stringResource(R.string.search_retry))
             }
           }
-          state.page > 0 && state.movies.isEmpty() -> Text(
-            stringResource(R.string.search_no_results),
-            color = MovaraTextSecondary,
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
+
+          state.page > 0 && state.contentState == UiState.Empty -> EmptyState(
+            message = stringResource(R.string.search_no_results),
+            iconRes = R.drawable.ic_ui_sentiment_dissatisfied,
+            modifier = Modifier
+              .testTag("search_empty_state")
+              .semantics {
+                liveRegion = LiveRegionMode.Polite
+              }
           )
+
+
           state.canLoadMore -> TextButton(onClick = onLoadMore) {
             Text(stringResource(R.string.search_load_more))
           }

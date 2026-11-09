@@ -30,6 +30,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import ee.movara.app.ui.state.UiState
 
 data class HomeUiState(
   val loading: Boolean = true,
@@ -43,6 +44,15 @@ data class HomeUiState(
 ) {
   val topRecommendation: MovieRecommendation? get() = recommendations.firstOrNull()
   val topPick: Movie? get() = topRecommendation?.movie
+
+  val contentState: UiState<List<MovieRecommendation>>
+    get() = when {
+      loading -> UiState.Loading
+      // A failed source must not hide successful recommendations from other sources.
+      recommendations.isNotEmpty() -> UiState.Success(recommendations)
+      loadFailed -> UiState.Error("Could not load recommendations")
+      else -> UiState.Empty
+    }
 }
 
 private data class HomeData(

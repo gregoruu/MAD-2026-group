@@ -29,6 +29,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -46,6 +47,8 @@ import ee.movara.app.ui.components.MovieCard
 import ee.movara.app.ui.components.PulsingPlaceholder
 import ee.movara.app.ui.components.SpotlightCard
 import ee.movara.app.ui.theme.MovaraTheme
+import ee.movara.app.ui.components.EmptyState
+import ee.movara.app.ui.state.UiState
 
 @Composable
 fun HomeScreen(
@@ -124,9 +127,12 @@ internal fun HomeContent(
           }
         }
       }
-      if (state.loading) {
+      if (state.contentState == UiState.Loading) {
         item(key = "loading") {
-          Column(verticalArrangement = Arrangement.spacedBy(32.dp)) {
+          Column(
+            modifier = Modifier.testTag("home_loading"),
+            verticalArrangement = Arrangement.spacedBy(32.dp)
+          ) {
             PulsingPlaceholder(
               Modifier.fillMaxWidth().height(spotlightHeight).padding(horizontal = screenMargin),
               cornerRadius = 24.dp
@@ -191,12 +197,18 @@ internal fun HomeContent(
             }
           }
         }
-        if (state.recommendations.isEmpty() && !state.loadFailed) {
+        if (state.contentState == UiState.Empty) {
           item(key = "empty") {
             val message = state.minimumRating?.let {
               stringResource(R.string.home_empty_rating, it)
             } ?: stringResource(R.string.home_empty)
-            HomeMessage(message, true, onRetry, screenMargin)
+            Column(
+              Modifier.padding(horizontal = screenMargin),
+              horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+              EmptyState(message = message)
+              TextButton(onClick = onRetry) { Text(stringResource(R.string.home_retry)) }
+            }
           }
         }
         if (state.recommendations.size > 1) {

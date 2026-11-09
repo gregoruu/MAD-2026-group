@@ -10,6 +10,7 @@ import ee.movara.app.data.repository.MovieTasteRepository
 import ee.movara.app.data.repository.RepositoryResult
 import ee.movara.app.domain.model.*
 import ee.movara.app.domain.recommendation.RecommendationSource
+import ee.movara.app.ui.state.UiState
 import java.io.IOException
 import java.time.LocalDate
 import kotlinx.coroutines.*
@@ -162,8 +163,11 @@ class HomeViewModelTest {
     repository.watched.value = success(listOf(movie(101)))
     assertFalse(101 in model.ids())
     assertEquals(102, model.uiState.value.topPick?.id)
+    repository.watched.value = success(listOf(movie(100), movie(101), movie(102)))
+    assertEquals(UiState.Empty, model.uiState.value.contentState)
     repository.watched.value = success(emptyList())
     assertEquals(101, model.uiState.value.topPick?.id)
+    assertTrue(model.uiState.value.contentState is UiState.Success)
     assertEquals(requests, repository.recommendationCalls)
     assertEquals(1, repository.trendingCalls)
   }
