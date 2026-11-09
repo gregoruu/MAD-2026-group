@@ -32,7 +32,6 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import ee.movara.app.ui.theme.MovaraGold
 import ee.movara.app.ui.theme.MovaraSurface
-import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.ui.res.painterResource
 import ee.movara.app.ui.theme.MovaraTextSecondary
@@ -60,6 +59,9 @@ import ee.movara.app.ui.search.SearchViewModel
 import ee.movara.app.ui.selectedgenre.SelectedGenreScreen
 import ee.movara.app.ui.selectedgenre.SelectedGenreViewModel
 import ee.movara.app.ui.selectedgenre.SelectedGenreViewModelFactory
+import ee.movara.app.ui.moviedetails.MovieDetailsRouteContent
+import ee.movara.app.ui.moviedetails.MovieDetailsViewModel
+
 
 // Main navigation structure of application.
 // Defines the three primary destinations: Home, Genres and My Movies.
@@ -105,8 +107,12 @@ private fun AppNavigation(container: AppContainer) {
 //Shared layout and bottom navigation bar
   Scaffold(
     bottomBar = {
-      if (currentDestination?.hasRoute<AboutRoute>() != true &&
-        currentDestination?.hasRoute<MoviePreferencesRoute>() != true) {
+      val hideBottomBar =
+        currentDestination?.hasRoute<AboutRoute>() == true ||
+          currentDestination?.hasRoute<MovieDetailsRoute>() == true ||
+          currentDestination?.hasRoute<MoviePreferencesRoute>() == true
+
+      if (!hideBottomBar) {
         NavigationBar(
 
         modifier = Modifier.height(80.dp),
@@ -118,7 +124,9 @@ private fun AppNavigation(container: AppContainer) {
             outlinedIcon = R.drawable.ic_nav_home_outline,
             filledIcon = R.drawable.ic_nav_home_filled,
             selected = currentDestination?.hasRoute<HomeRoute>() == true,
-            onClick = { navController.openTab(HomeRoute) }
+            onClick = {
+              navController.openTab(HomeRoute)
+            }
           )
 
           MainTabItem(
@@ -254,20 +262,25 @@ private fun AppNavigation(container: AppContainer) {
       }
 
 
-      composable<MovieDetailsRoute> {
-        Column(
-          modifier = Modifier.fillMaxSize(),
-          horizontalAlignment = Alignment.CenterHorizontally,
-          verticalArrangement = Arrangement.Center
-        ) {
-          Text("Movie Details", fontSize = 26.sp)
 
-          Button(
-            onClick = { navController.popBackStack() }
-          ) {
-            Text("Back")
-          }
+      composable<MovieDetailsRoute> { backStackEntry ->
+        val route = backStackEntry.toRoute<MovieDetailsRoute>()
+
+        val movieDetailsViewModel: MovieDetailsViewModel = viewModel(
+          viewModelStoreOwner = backStackEntry
+        ) {
+          MovieDetailsViewModel(
+            movieId = route.movieId,
+            repository = container.movieRepository
+          )
         }
+
+        MovieDetailsRouteContent(
+          viewModel = movieDetailsViewModel,
+          onBack = {
+            navController.popBackStack()
+          }
+        )
       }
 
 
@@ -288,6 +301,7 @@ private fun AppNavigation(container: AppContainer) {
           onCancel = { navController.popBackStack() }
         )
       }
+
 
       composable<AboutRoute> {
         AboutScreen(
