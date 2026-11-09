@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -28,6 +29,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -35,7 +37,10 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ee.movara.app.R
+import ee.movara.app.domain.model.GenreCatalog
 import ee.movara.app.domain.model.Movie
+import ee.movara.app.domain.recommendation.MovieRecommendation
+import ee.movara.app.domain.recommendation.RecommendationSource
 import ee.movara.app.ui.components.MovieAction
 import ee.movara.app.ui.components.MovieActionButton
 import ee.movara.app.ui.components.MovieCard
@@ -95,19 +100,19 @@ internal fun HomeContent(
     LazyColumn(
       modifier = Modifier.fillMaxSize(),
       contentPadding = PaddingValues(bottom = 24.dp),
-      verticalArrangement = Arrangement.spacedBy(40.dp)
+      verticalArrangement = Arrangement.spacedBy(32.dp)
     ) {
       item(key = "header") {
         Row(
-          modifier = Modifier.fillMaxWidth().padding(start = screenMargin, end = if (horizontalSpotlight) screenMargin else 12.dp, top = 8.dp),
+          modifier = Modifier.fillMaxWidth().padding(
+            start = screenMargin,
+            end = if (horizontalSpotlight) screenMargin else 12.dp,
+            top = 8.dp
+          ),
           verticalAlignment = Alignment.CenterVertically,
           horizontalArrangement = Arrangement.SpaceBetween
         ) {
-          Text(
-            stringResource(R.string.app_name),
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onBackground
-          )
+          Text(stringResource(R.string.app_name), style = MaterialTheme.typography.titleMedium)
           Row(verticalAlignment = Alignment.CenterVertically) {
             TextButton(onClick = onEditPreferences) {
               Text(stringResource(R.string.preferences_edit))
@@ -124,7 +129,10 @@ internal fun HomeContent(
       }
       if (state.contentState == UiState.Loading) {
         item(key = "loading") {
-          Column(verticalArrangement = Arrangement.spacedBy(40.dp)) {
+          Column(
+            modifier = Modifier.testTag("home_loading"),
+            verticalArrangement = Arrangement.spacedBy(32.dp)
+          ) {
             PulsingPlaceholder(
               Modifier.fillMaxWidth().height(spotlightHeight).padding(horizontal = screenMargin),
               cornerRadius = 24.dp
@@ -138,69 +146,96 @@ internal fun HomeContent(
           }
         }
       } else {
-        state.topPick?.let { movie ->
-          item(key = "spotlight") {
-            SpotlightCard(
-              movie = movie,
-              onClick = { onMovieClick(movie.id) },
-              modifier = Modifier.padding(horizontal = screenMargin),
-              height = spotlightHeight,
-              horizontal = horizontalSpotlight,
-              actions = {
-                FlowRow(
-                  horizontalArrangement = Arrangement.spacedBy(12.dp),
-                  verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                  MovieActionButton(
-                    MovieAction.LIKE, movie.id in state.likedIds, { onLike(movie) }
-                  )
-                  MovieActionButton(
-                    MovieAction.WATCH_LATER, movie.id in state.watchLaterIds, { onWatchLater(movie) }
-                  )
-                }
-              }
+        if (state.usingCache) {
+          item(key = "cache") {
+            Text(
+              stringResource(R.string.home_cached),
+              Modifier.padding(horizontal = screenMargin),
+              style = MaterialTheme.typography.bodySmall
             )
           }
         }
         if (state.loadFailed) {
-          item(key = "error") { HomeMessage(R.string.home_load_error, true, onRetry, screenMargin) }
-
-        } else if (state.rails.isEmpty()) {
-          item(key = "empty") {
-            EmptyState(
-              message = stringResource(R.string.home_empty),
-              modifier = Modifier.padding(
-                horizontal = screenMargin
-              )
+          item(key = "error") {
+            HomeMessage(
+              stringResource(if (state.recommendations.isEmpty()) R.string.home_load_error
+                else R.string.home_partial_error),
+              true, onRetry, screenMargin
             )
           }
         }
-        items(state.rails, key = { it.sourceMovie?.id ?: "trending" }) { rail ->
-          Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Text(
-              text = rail.sourceMovie?.let {
-                stringResource(R.string.home_because_you_liked, it.title)
-              } ?: stringResource(R.string.home_trending),
-              modifier = Modifier.padding(horizontal = screenMargin),
-              style = MaterialTheme.typography.headlineSmall,
-              color = MaterialTheme.colorScheme.onBackground
-            )
-            when {
-              rail.failed -> HomeMessage(R.string.home_load_error, true, onRetry, screenMargin)
-
-              rail.movies.isEmpty() -> EmptyState(
-                message = stringResource(R.string.home_empty),
-                modifier = Modifier.padding(
-                  horizontal = screenMargin
-                )
+        state.topRecommendation?.let { recommendation ->
+          val movie = recommendation.movie
+          item(key = "spotlight") {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+              Text(
+                recommendationReason(recommendation),
+                Modifier.padding(horizontal = screenMargin),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
               )
-
-              else -> LazyRow(
+              SpotlightCard(
+                movie = movie,
+                onClick = { onMovieClick(movie.id) },
+                modifier = Modifier.padding(horizontal = screenMargin),
+                height = spotlightHeight,
+                horizontal = horizontalSpotlight,
+                actions = {
+                  FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                  ) {
+                    MovieActionButton(
+                      MovieAction.LIKE, movie.id in state.likedIds, { onLike(movie) }
+                    )
+                    MovieActionButton(
+                      MovieAction.WATCH_LATER, movie.id in state.watchLaterIds, { onWatchLater(movie) }
+                    )
+                  }
+                }
+              )
+            }
+          }
+        }
+        if (state.contentState == UiState.Empty) {
+          item(key = "empty") {
+            val message = state.minimumRating?.let {
+              stringResource(R.string.home_empty_rating, it)
+            } ?: stringResource(R.string.home_empty)
+            Column(
+              Modifier.padding(horizontal = screenMargin),
+              horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+              EmptyState(message = message)
+              TextButton(onClick = onRetry) { Text(stringResource(R.string.home_retry)) }
+            }
+          }
+        }
+        if (state.recommendations.size > 1) {
+          item(key = "recommendations") {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+              Text(
+                stringResource(if (state.recommendations.any { !it.isDiscovery })
+                  R.string.home_for_you else R.string.home_more_discovery),
+                Modifier.padding(horizontal = screenMargin),
+                style = MaterialTheme.typography.headlineSmall
+              )
+              LazyRow(
                 contentPadding = PaddingValues(horizontal = screenMargin),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
               ) {
-                items(rail.movies, key = Movie::id) { movie ->
-                  MovieCard(movie, onClick = { onMovieClick(movie.id) })
+                items(state.recommendations.drop(1), key = { it.movie.id }) { recommendation ->
+                  Column(
+                    Modifier.width(144.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                  ) {
+                    MovieCard(recommendation.movie, onClick = { onMovieClick(recommendation.movie.id) })
+                    Text(
+                      recommendationReason(recommendation),
+                      style = MaterialTheme.typography.bodySmall,
+                      color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                  }
                 }
               }
             }
@@ -212,16 +247,26 @@ internal fun HomeContent(
 }
 
 @Composable
-private fun HomeMessage(message: Int, retry: Boolean, onRetry: () -> Unit, screenMargin: Dp) {
+private fun recommendationReason(item: MovieRecommendation): String {
+  val seeds = item.sources.filterIsInstance<RecommendationSource.Seed>().sortedBy { it.movieId }
+  val title = seeds.firstNotNullOfOrNull { it.title?.takeIf(String::isNotBlank) }
+  return when {
+    title != null -> stringResource(R.string.home_because_you_enjoyed, title)
+    seeds.isNotEmpty() -> stringResource(R.string.home_from_favourites)
+    item.preferredGenreIds.isNotEmpty() -> stringResource(
+      R.string.home_preferred_genre, GenreCatalog.nameForId(item.preferredGenreIds.min())
+    )
+    else -> stringResource(R.string.home_trending)
+  }
+}
+
+@Composable
+private fun HomeMessage(message: String, retry: Boolean, onRetry: () -> Unit, screenMargin: Dp) {
   Column(
     Modifier.padding(horizontal = screenMargin),
     verticalArrangement = Arrangement.spacedBy(8.dp)
   ) {
-    Text(
-      stringResource(message),
-      style = MaterialTheme.typography.bodyLarge,
-      color = MaterialTheme.colorScheme.onBackground
-    )
+    Text(message, style = MaterialTheme.typography.bodyLarge)
     if (retry) TextButton(onClick = onRetry) { Text(stringResource(R.string.home_retry)) }
   }
 }
@@ -232,7 +277,9 @@ private fun HomeMessage(message: Int, retry: Boolean, onRetry: () -> Unit, scree
 private fun HomePreview() {
   val movie = Movie(1, "The Grand Budapest Hotel", null, 2014)
   MovaraTheme {
-    HomeContent(HomeUiState(loading = false, rails = listOf(HomeRail(movies = listOf(movie)))),
-      {}, {}, {}, {}, {})
+    HomeContent(
+      HomeUiState(loading = false, recommendations = listOf(MovieRecommendation(movie))),
+      {}, {}, {}, {}, {}
+    )
   }
 }

@@ -1,61 +1,40 @@
-
 package ee.movara.app.ui.home
 
 import ee.movara.app.domain.model.Movie
+import ee.movara.app.domain.recommendation.MovieRecommendation
 import ee.movara.app.ui.state.UiState
 import org.junit.Assert.*
 import org.junit.Test
 
 class HomeUiStateTest {
+  private val recommendation = MovieRecommendation(Movie(1, "Dune", null, 2021))
 
-    @Test
-    fun emptyRailsProduceEmptyState() {
-        assertEquals(
-            UiState.Empty,
-            HomeUiState(
-                loading = false,
-                rails = emptyList()
-            ).contentState
-        )
+  @Test fun noRecommendationsProduceEmptyStateAfterLoading() {
+    assertEquals(UiState.Empty, HomeUiState(loading = false).contentState)
+  }
 
-        assertEquals(
-            UiState.Empty,
-            HomeUiState(
-                loading = false,
-                rails = listOf(
-                    HomeRail(movies = emptyList())
-                )
-            ).contentState
-        )
-    }
+  @Test fun loadingDoesNotBecomeEmptyOrErrorBeforeItFinishes() {
+    assertEquals(UiState.Loading, HomeUiState().contentState)
+    assertEquals(UiState.Loading, HomeUiState(loadFailed = true).contentState)
+  }
 
-    @Test
-    fun failedRailsWithoutMoviesProduceError() {
-        val state = HomeUiState(
-            loading = false,
-            rails = listOf(
-                HomeRail(failed = true),
-                HomeRail(failed = true)
-            )
-        )
+  @Test fun failedSourcesWithoutMoviesProduceError() {
+    val state = HomeUiState(loading = false, loadFailed = true)
+    assertTrue(state.contentState is UiState.Error)
+  }
 
-        assertTrue(state.contentState is UiState.Error)
-    }
+  @Test fun availableMoviesProduceSuccessEvenWithFailedSource() {
+    val state = HomeUiState(
+      loading = false,
+      recommendations = listOf(recommendation),
+      loadFailed = true
+    )
+    assertEquals(UiState.Success(listOf(recommendation)), state.contentState)
+    assertEquals(recommendation.movie, state.topPick)
+  }
 
-    @Test
-    fun availableMoviesProduceSuccessEvenWithFailedRail() {
-        val state = HomeUiState(
-            loading = false,
-            rails = listOf(
-                HomeRail(
-                    movies = listOf(
-                        Movie(1, "Dune", null, 2021)
-                    )
-                ),
-                HomeRail(failed = true)
-            )
-        )
-
-        assertTrue(state.contentState is UiState.Success)
-    }
+  @Test fun availableMoviesWithoutFailuresProduceSuccess() {
+    val state = HomeUiState(loading = false, recommendations = listOf(recommendation))
+    assertEquals(UiState.Success(listOf(recommendation)), state.contentState)
+  }
 }

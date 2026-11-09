@@ -2,7 +2,7 @@
 package ee.movara.app.ui.state
 
 import ee.movara.app.domain.model.Movie
-import ee.movara.app.ui.home.HomeRail
+import ee.movara.app.domain.recommendation.MovieRecommendation
 import ee.movara.app.ui.home.HomeUiState
 import ee.movara.app.ui.search.SearchUiState
 import ee.movara.app.ui.selectedgenre.SelectedGenreUiState
@@ -66,9 +66,7 @@ class UiStateTest {
         assertTrue(
             HomeUiState(
                 loading = false,
-                rails = listOf(
-                    HomeRail(movies = listOf(movie))
-                )
+                recommendations = listOf(MovieRecommendation(movie))
             ).contentState is UiState.Success
         )
     }

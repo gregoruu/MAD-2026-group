@@ -3,85 +3,108 @@ package ee.movara.app.ui.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ee.movara.app.data.local.MovieListType
+import ee.movara.app.data.repository.HomeRecommendationLoader
 import ee.movara.app.data.repository.MovieRepository
+import ee.movara.app.data.repository.MovieTasteRepository
 import ee.movara.app.data.repository.RepositoryResult
 import ee.movara.app.domain.model.Movie
+import ee.movara.app.domain.model.MovieTastePreferences
+import ee.movara.app.domain.model.MovieTasteProfile
+import ee.movara.app.domain.recommendation.MovieRecommendation
+import ee.movara.app.domain.recommendation.MovieRecommendations
+import ee.movara.app.domain.recommendation.RecommendationBatch
+import java.time.LocalDate
+import java.time.ZoneOffset
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import ee.movara.app.ui.state.UiState
 
-data class HomeRail(
-  val sourceMovie: Movie? = null,
-  val movies: List<Movie> = emptyList(),
-  val failed: Boolean = false
-)
-
 data class HomeUiState(
   val loading: Boolean = true,
-  val rails: List<HomeRail> = emptyList(),
+  val recommendations: List<MovieRecommendation> = emptyList(),
   val likedIds: Set<Int> = emptySet(),
   val watchLaterIds: Set<Int> = emptySet(),
   val loadFailed: Boolean = false,
-  val actionFailed: Boolean = false
+  val usingCache: Boolean = false,
+  val actionFailed: Boolean = false,
+  val minimumRating: Int? = null
 ) {
+  val topRecommendation: MovieRecommendation? get() = recommendations.firstOrNull()
+  val topPick: Movie? get() = topRecommendation?.movie
 
-  val topPick: Movie?
-    get() = rails.firstNotNullOfOrNull {
-      it.movies.firstOrNull()
-    }
-
-
-  val contentState: UiState<List<HomeRail>>
+  val contentState: UiState<List<MovieRecommendation>>
     get() = when {
       loading -> UiState.Loading
-
-      loadFailed -> UiState.Error(
-        "Could not load recommendations"
-      )
-
-      // At least one rail contains usable movies.
-      rails.any { it.movies.isNotEmpty() } ->
-        UiState.Success(rails)
-
-      // No usable movies, but at least one request failed.
-      rails.any { it.failed } ->
-        UiState.Error("Could not load recommendations")
-
-      // No rails, or all successful rails are empty.
+      // A failed source must not hide successful recommendations from other sources.
+      recommendations.isNotEmpty() -> UiState.Success(recommendations)
+      loadFailed -> UiState.Error("Could not load recommendations")
       else -> UiState.Empty
     }
 }
 
+private data class HomeData(
+  val loading: Boolean = true,
+  val preferences: MovieTastePreferences = MovieTastePreferences(),
+  val likedIds: Set<Int> = emptySet(),
+  val watchLaterIds: Set<Int> = emptySet(),
+  val batches: List<RecommendationBatch> = emptyList(),
+  val loadFailed: Boolean = false,
+  val usingCache: Boolean = false,
+  val actionFailed: Boolean = false,
+  val today: LocalDate = LocalDate.MIN
+)
 
-/** Home presentation; recommendation ranking and filtering can evolve independently of the UI. */
-class HomeViewModel(private val repository: MovieRepository) : ViewModel() {
-  private val state = MutableStateFlow(HomeUiState())
-  // Keep the fetched rails intact so watched-list changes can refilter locally.
-  val uiState = combine(state, repository.observeWatchedMovies()) { current, watched ->
-    when (watched) {
-      is RepositoryResult.Success -> {
-        val watchedIds = watched.data.map(Movie::id).toSet()
-        current.copy(rails = current.rails.map { rail ->
-          rail.copy(movies = rail.movies.filterNot { it.id in watchedIds })
-        })
-      }
-      is RepositoryResult.Error ->
-        current.copy(loading = false, rails = emptyList(), loadFailed = true)
-    }
-  }.stateIn(viewModelScope, SharingStarted.Eagerly, HomeUiState())
+private data class HomeInput(
+  val preferences: MovieTastePreferences?,
+  val likedMovies: List<Movie>?,
+  val refreshVersion: Int
+)
+
+@OptIn(ExperimentalCoroutinesApi::class)
+class HomeViewModel(
+  private val repository: MovieRepository,
+  private val tasteRepository: MovieTasteRepository,
+  private val today: () -> LocalDate = { LocalDate.now(ZoneOffset.UTC) }
+) : ViewModel() {
+  private val state = MutableStateFlow(HomeData())
+  private val loader = HomeRecommendationLoader(repository)
   private val refresh = MutableStateFlow(0)
+  private var completedRefresh = 0
   private val pendingActions = mutableSetOf<Pair<Int, MovieListType>>()
+
+  // Keep all fetched candidates. Watched changes rerank immediately without extra HTTP requests.
+  val uiState = combine(state, refresh.flatMapLatest { repository.observeWatchedMovies() }) { current, watched ->
+    val watchedIds = (watched as? RepositoryResult.Success)?.data?.map(Movie::id)?.toSet()
+    HomeUiState(
+      loading = current.loading,
+      recommendations = if (watchedIds == null) emptyList() else MovieRecommendations.rank(
+        current.batches, current.preferences, current.likedIds, watchedIds, current.today
+      ),
+      likedIds = current.likedIds,
+      watchLaterIds = current.watchLaterIds,
+      loadFailed = current.loadFailed || watchedIds == null,
+      usingCache = current.usingCache,
+      actionFailed = current.actionFailed,
+      minimumRating = current.preferences.minimumRating
+    )
+  }.stateIn(viewModelScope, SharingStarted.Eagerly, HomeUiState())
 
   init {
     viewModelScope.launch {
-      repository.observeWatchLaterMovies().collect { result ->
+      refresh.flatMapLatest { repository.observeWatchLaterMovies() }.collect { result ->
         when (result) {
           is RepositoryResult.Success -> state.update {
             it.copy(watchLaterIds = result.data.map(Movie::id).toSet())
@@ -91,42 +114,48 @@ class HomeViewModel(private val repository: MovieRepository) : ViewModel() {
       }
     }
     viewModelScope.launch {
-      val likedMovies = repository.observeLikedMovies().map { result ->
-        if (result is RepositoryResult.Success) {
-          state.update { it.copy(likedIds = result.data.map(Movie::id).toSet()) }
-          // Room supplies the most recently added movies first.
-          RepositoryResult.Success(result.data.take(5), result.source)
-        } else {
-          result
+      refresh.flatMapLatest { refreshVersion ->
+        // Retry resubscribes after a failed DataStore read instead of substituting default preferences.
+        val preferences = tasteRepository.profile.map<MovieTasteProfile, MovieTastePreferences?> {
+          it.preferences
+        }.catch { failure ->
+          if (failure is CancellationException) throw failure
+          emit(null)
         }
-      }.distinctUntilChanged()
-      combine(likedMovies, refresh) { liked, _ -> liked }.collectLatest { liked ->
-        state.update { it.copy(loading = true, loadFailed = false) }
-        if (liked is RepositoryResult.Error) {
-          state.update { it.copy(loading = false, rails = emptyList(), loadFailed = true) }
+        combine(preferences, repository.observeLikedMovies()) { taste, liked ->
+          HomeInput(taste, (liked as? RepositoryResult.Success)?.data, refreshVersion)
+        }.distinctUntilChanged()
+      }.collectLatest { input ->
+        val preferences = input.preferences
+        val likes = input.likedMovies
+        if (preferences == null || likes == null) {
+          state.update { it.copy(loading = false, batches = emptyList(), loadFailed = true) }
           return@collectLatest
         }
-        val sources = (liked as RepositoryResult.Success).data
-        val rails = if (sources.isEmpty()) {
-          listOf(toRail(null, repository.trendingMovies()))
-        } else {
-          sources.map { movie -> toRail(movie, repository.recommendedMovies(movie.id)) }
-        }
-        state.update { it.copy(loading = false, rails = rails) }
+        val date = today()
+        state.update { it.copy(
+          loading = true, loadFailed = false, usingCache = false, batches = emptyList(),
+          preferences = preferences, likedIds = likes.map(Movie::id).toSet(), today = date
+        ) }
+        val result = loader.load(
+          preferences, likes, date, forceRefresh = input.refreshVersion != completedRefresh
+        )
+        currentCoroutineContext().ensureActive()
+        completedRefresh = input.refreshVersion
+        state.update { it.copy(
+          loading = false, batches = result.batches,
+          loadFailed = result.hasFailures, usingCache = result.usingCache
+        ) }
       }
     }
   }
 
-  fun retry() {
-    refresh.value += 1
-  }
+  fun retry() { refresh.value += 1 }
 
   fun toggleLike(movie: Movie) = toggle(movie, MovieListType.LIKED)
   fun toggleWatchLater(movie: Movie) = toggle(movie, MovieListType.WATCH_LATER)
 
-  fun dismissActionError() {
-    state.update { it.copy(actionFailed = false) }
-  }
+  fun dismissActionError() { state.update { it.copy(actionFailed = false) } }
 
   private fun toggle(movie: Movie, listType: MovieListType) {
     val key = movie.id to listType
@@ -144,13 +173,5 @@ class HomeViewModel(private val repository: MovieRepository) : ViewModel() {
         pendingActions.remove(key)
       }
     }
-  }
-
-  private fun toRail(
-    source: Movie?,
-    result: RepositoryResult<ee.movara.app.domain.model.MoviePage>
-  ): HomeRail = when (result) {
-    is RepositoryResult.Success -> HomeRail(source, result.data.movies.distinctBy(Movie::id))
-    is RepositoryResult.Error -> HomeRail(sourceMovie = source, failed = true)
   }
 }

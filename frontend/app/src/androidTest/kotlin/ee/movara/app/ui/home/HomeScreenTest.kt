@@ -1,5 +1,6 @@
 package ee.movara.app.ui.home
 
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -7,6 +8,8 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import ee.movara.app.domain.model.Movie
+import ee.movara.app.domain.recommendation.MovieRecommendation
+import ee.movara.app.domain.recommendation.RecommendationSource
 import ee.movara.app.ui.theme.MovaraTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -25,7 +28,10 @@ class HomeScreenTest {
     compose.setContent {
       MovaraTheme {
         HomeContent(
-          HomeUiState(loading = false, rails = listOf(HomeRail(movies = listOf(movie, Movie(99, "Dune", null, 2021))))),
+          HomeUiState(loading = false, recommendations = listOf(
+            MovieRecommendation(movie),
+            MovieRecommendation(Movie(99, "Dune", null, 2021))
+          )),
           onSearch = { searched = true },
           onMovieClick = { openedId = it },
           onLike = { likedId = it.id },
@@ -42,18 +48,20 @@ class HomeScreenTest {
     compose.runOnIdle { assertEquals(42, savedId) }
     compose.onNodeWithText("See Details").performScrollTo().performClick()
     compose.runOnIdle { assertEquals(42, openedId) }
-    compose.onNodeWithText("Trending this week").performScrollTo().assertIsDisplayed()
+    compose.onNodeWithText("More to discover").performScrollTo().assertIsDisplayed()
     compose.onNodeWithText("Dune").performScrollTo().performClick()
     compose.runOnIdle { assertEquals(99, openedId) }
   }
 
-  @Test fun likedSourceTitlesAndSelectedActionLabelsAreVisible() {
+  @Test fun favouriteReasonsAndSelectedActionLabelsAreVisible() {
     compose.setContent {
       MovaraTheme {
         HomeContent(
           HomeUiState(
             loading = false,
-            rails = listOf(HomeRail(Movie(1, "Interstellar", null, 2014), listOf(movie))),
+            recommendations = listOf(MovieRecommendation(
+              movie, setOf(RecommendationSource.Seed(1, "Interstellar"))
+            )),
             likedIds = setOf(42),
             watchLaterIds = setOf(42)
           ),
@@ -61,9 +69,61 @@ class HomeScreenTest {
         )
       }
     }
+    compose.onNodeWithText("Because you enjoyed Interstellar").assertIsDisplayed()
     compose.onNodeWithText("Liked").performScrollTo().assertIsDisplayed()
     compose.onNodeWithText("Saved").performScrollTo().assertIsDisplayed()
-    compose.onNodeWithText("Because you liked Interstellar").performScrollTo().assertIsDisplayed()
+  }
+
+  @Test fun genreBasedRecommendationsExplainTheMatch() {
+    compose.setContent {
+      MovaraTheme {
+        HomeContent(
+          HomeUiState(loading = false, recommendations = listOf(
+            MovieRecommendation(movie, preferredGenreIds = setOf(878))
+          )),
+          {}, {}, {}, {}, {}
+        )
+      }
+    }
+    compose.onNodeWithText("Matches your interest in Sci-Fi").assertIsDisplayed()
+  }
+
+  @Test fun cachedPartialResultsRemainUsableAndOfferRetry() {
+    var retries = 0
+    compose.setContent {
+      MovaraTheme {
+        HomeContent(
+          HomeUiState(loading = false, loadFailed = true, usingCache = true,
+            recommendations = listOf(MovieRecommendation(movie))),
+          {}, {}, {}, {}, { retries++ }
+        )
+      }
+    }
+    compose.onNodeWithText("Showing saved recommendations. They may be out of date.")
+      .assertIsDisplayed()
+    compose.onNodeWithText("Some recommendations couldn’t load. Showing the available movies.")
+      .performScrollTo().assertIsDisplayed()
+    compose.onNodeWithText("Try again").performScrollTo().performClick()
+    compose.runOnIdle { assertEquals(1, retries) }
+    compose.onNodeWithText("Arrival").performScrollTo().assertIsDisplayed()
+  }
+
+  @Test fun ratingFilteredEmptyStateExplainsTheMinimumAndAllowsEditingPreferences() {
+    var edited = false
+    compose.setContent {
+      MovaraTheme {
+        HomeContent(
+          HomeUiState(loading = false, minimumRating = 8),
+          {}, {}, {}, {}, {},
+          onEditPreferences = { edited = true }
+        )
+      }
+    }
+    compose.onNodeWithText(
+      "No recommendations meet your 8+ minimum right now. Try again or edit Your taste."
+    ).assertIsDisplayed()
+    compose.onNodeWithText("Your taste").performClick()
+    compose.runOnIdle { assertEquals(true, edited) }
   }
 
   @Test
@@ -73,7 +133,7 @@ class HomeScreenTest {
         HomeContent(
           state = HomeUiState(
             loading = false,
-            rails = emptyList()
+            recommendations = emptyList()
           ),
           onSearch = {},
           onMovieClick = {},
@@ -94,16 +154,14 @@ class HomeScreenTest {
 
 
   @Test
-  fun emptyRecommendationRailShowsMessageAndIcon() {
+  fun recommendationsBecomingEmptyShowMessageAndIcon() {
+    val state = mutableStateOf(HomeUiState(
+      loading = false, recommendations = listOf(MovieRecommendation(movie))
+    ))
     compose.setContent {
       MovaraTheme {
         HomeContent(
-          state = HomeUiState(
-            loading = false,
-            rails = listOf(
-              HomeRail(movies = emptyList())
-            )
-          ),
+          state = state.value,
           onSearch = {},
           onMovieClick = {},
           onLike = {},
@@ -113,12 +171,26 @@ class HomeScreenTest {
       }
     }
 
+    compose.onNodeWithText("Arrival").performScrollTo().assertIsDisplayed()
+    compose.runOnIdle { state.value = state.value.copy(recommendations = emptyList()) }
     compose.onNodeWithText(
       "No recommendations available right now. Try again later."
     ).performScrollTo().assertIsDisplayed()
 
     compose.onNodeWithTag("empty_state_icon")
-      .assertExists()
+      .assertIsDisplayed()
+  }
+
+  @Test fun loadingShowsPlaceholdersWithoutAnEmptyMessageOrIcon() {
+    compose.setContent {
+      MovaraTheme {
+        HomeContent(HomeUiState(), {}, {}, {}, {}, {})
+      }
+    }
+    compose.onNodeWithTag("home_loading").assertIsDisplayed()
+    compose.onNodeWithTag("empty_state_icon").assertDoesNotExist()
+    compose.onNodeWithText("No recommendations available right now. Try again later.")
+      .assertDoesNotExist()
   }
 
 }
