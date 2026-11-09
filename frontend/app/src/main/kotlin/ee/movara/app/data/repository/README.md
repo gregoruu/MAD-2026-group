@@ -39,6 +39,16 @@ Cache data and saved-list data are independent. Saved entries use `SavedMovieDao
 Database v2 adds the cache via `MovaraDatabase.MIGRATION_1_2`; v1 saved lists and
 their index remain untouched. Both schemas are exported under `app/schemas`.
 
+## Personalized Home
+
+`HomeRecommendationLoader` combines up to five recent Likes, five quiz favourites,
+preferred-genre discovery and weekly trending. It fetches one page per source,
+deduplicates seed requests and limits concurrent requests to three. Existing
+`MovieRepository` endpoints and caches handle every request; no new proxy rules are
+needed. Source failures and cache usage are returned alongside successful batches.
+The pure `MovieRecommendations` ranker handles deduplication, ranking, exclusions,
+minimum ratings and presentation variety. Full rules are in `docs/architecture.md`.
+
 ## Tests
 
 The existing setup uses JUnit4, coroutines-test, manual constructor injection and

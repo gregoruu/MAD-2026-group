@@ -29,7 +29,7 @@ Network access requires the `INTERNET` permission, declared in `AndroidManifest.
 
 ## The proxy
 
-The proxy forwards only the five endpoints below, each with only the query parameters and
+The proxy forwards only the endpoints below, each with only the query parameters and
 values the app sends: `query` is not blank and at most 100 characters; `page` is 1 to 500.
 Discover accepts `sort_by` values `popularity.desc`, `vote_count.desc` and
 `vote_average.desc`, an optional single `with_genres` ID, integer `vote_average.gte`
@@ -50,8 +50,8 @@ many pages exist.
 | Function | Request | Used for |
 | --- | --- | --- |
 | `searchMovies(title, page)` | `GET search/movie?query=&page=` | Search |
-| `trendingMovies(page)` | `GET trending/movie/week?page=` | Home, when nothing is liked yet |
-| `recommendedMovies(movieId, page)` | `GET movie/{id}/recommendations?page=` | Home rails "Because you liked …" |
+| `trendingMovies(page)` | `GET trending/movie/week?page=` | Home discovery and cold start |
+| `recommendedMovies(movieId, page)` | `GET movie/{id}/recommendations?page=` | Personalized Home candidates from quiz favourites and Likes |
 | `moviesInGenre(genreId, page)` | `GET discover/movie?with_genres=&sort_by=popularity.desc&page=` | A selected genre |
 | `movieDetails(movieId)` | `GET movie/{id}?append_to_response=credits` | Movie Details |
 | `discoverMovies(options, page)` | `GET discover/movie` with optional genre, sort, rating, vote-count and release-date filters | Quiz and shared discovery for Home |
@@ -70,17 +70,23 @@ at least 100 votes, and a primary release date no later than the current UTC dat
 The same date is retained while paging through one quiz session. With no chosen
 genres, the quiz uses these filters without `with_genres`; it does not use trending.
 Selected genres are requested separately and interleaved. Title search keeps its
-relevance order and allows lower-rated favourites, but the quiz excludes future or
-unknown release dates from search results too.
+relevance order and allows lower-rated favourites and unknown release dates;
+explicitly future-dated movies are excluded.
 
 `Movie` carries optional genre IDs, rating, vote count and a parsed release date
-from list responses, making the metadata available to #40 without per-card details
+from list responses, making Home ranking possible without per-card details
 requests. Sparse saved-list rows may not have this metadata. Discovery cache keys
 include every filter, sort order, cutoff date and page, and never reuse the plain
 genre or trending cache for a filtered request.
 
-Deploy the updated proxy before testing this app against staging; the older Worker
-rejects the new parameters with HTTP 400.
+The proxy rules introduced for the quiz must be deployed before distributing that
+app version; older Workers reject the discovery parameters with HTTP 400.
+Personalized Home (#40) reuses those same endpoints, filters and cache keys, so it
+does not require an additional proxy change or deployment. Home requests popular
+movies per preferred genre, using the user's minimum rating, at least 100 votes and
+a current UTC release cutoff. Favourite/Like recommendations and weekly trending
+are merged and filtered locally with the same minimum. See the ranking, request
+limits and offline behaviour in [architecture.md](architecture.md#personalized-home-recommendations).
 
 Images are not fetched through this service. Posters are `https://image.tmdb.org/t/p/{size}{path}`
 and are loaded by the image loader from the paths in the responses.

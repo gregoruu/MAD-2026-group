@@ -61,8 +61,8 @@ cached results may be stale. Cancellation propagates normally.
 
 Saved-list observations, counts and membership are flows of results containing domain
 data. Save/remove operations delegate to the existing DAO. List business rules (#39),
-Home recommendation logic (#40), connectivity UI (#43) and image caching (#48) remain
-separate features.
+connectivity UI (#43) and image caching (#48) remain separate features.
+Home recommendation orchestration and ranking are described below.
 
 The endpoints, the failure behaviour and the logging rules are in
 [docs/api-docs.md](api-docs.md).
@@ -139,7 +139,52 @@ across searches and pages. **Show more** remains available when filtering remove
 all displayed results but further pages exist. Home's **Your taste** action opens the same quiz
 with existing preferences. Saving errors retain the draft for retry; first-launch
 users can also continue for the current session without saving.
-Home ranking consumes these preferences under #40.
+
+## Personalized Home recommendations
+
+Home observes the persisted taste profile and the complete Like/Watched lists.
+`HomeRecommendationLoader` requests the first recommendation page for up to five
+most recent Likes and five quiz favourites (stable ID order); overlapping seed IDs
+are requested only once. It also requests popular movies for each preferred genre,
+using `MovieDiscovery.familiar` with popularity sorting and the user's minimum rating,
+plus one weekly-trending page for discovery. At most three requests run concurrently.
+All selected favourites and all Likes remain excluded, including those beyond the
+seed request limit. Missing favourite titles do not require extra detail requests.
+
+`MovieRecommendations.rank` is a pure function. It merges candidates by TMDB ID and
+records distinct seed/genre/discovery sources, so duplicates do not inflate overlap.
+It excludes Watched, all favourite/liked seed films and explicitly future-dated films.
+An explicit minimum rating applies to every source, including cached and discovery
+results; unknown or lower ratings cannot satisfy it. The minimum is never lowered.
+
+Eligible films are ordered by these rules, in order:
+
+1. Number of distinct favourite/liked movie recommendation sources.
+2. Number of preferred genres matched by metadata or a genre-discovery source.
+3. At least 100 community votes before less-established ratings.
+4. TMDB rating, then vote count, descending; finally TMDB ID ascending for stable ties.
+
+There are no weighted scores or decade quotas. The highest-ranked eligible result
+is Top Pick. At most 24 films are retained, with at most four discovery-only films
+when personalized candidates exist. After Top Pick, presentation prefers the next
+ranked candidate with a different source and genre from the preceding film, when
+available, otherwise retaining ranking order. With no preferences or Likes, discovery
+can fill all 24 places. Reasons identify an enjoyed film, a preferred genre, or trending.
+
+The spotlight and remaining movie row share this deduplicated selection; Top Pick
+is not repeated in the row. Profile or Like changes cancel stale loads and refresh
+sources. Watched changes immediately refilter/rerank fetched candidates without
+network requests; removing a Watched entry can restore a candidate. Watch Later
+changes update action membership without changing recommendations.
+
+Existing MovieRepository response caches are reused and cached results are labelled.
+Individual source failures keep successful results visible with retry feedback.
+A missing profile or unreadable Like/Watched list cannot silently bypass saved filters.
+Retry resubscribes to profile and Watched observations and reloads sources. Empty
+results explain an active minimum rating and leave **Your taste** accessible.
+Discovery cache keys still include the exact cutoff date: an offline session on a
+new date may lack genre-cache entries, while previously cached seed/trending results
+can remain available. No new endpoints or proxy deployment are required for #40.
 
 ## Permissions and user accounts
 
