@@ -23,6 +23,12 @@ import ee.movara.app.ui.theme.*
 import kotlinx.coroutines.flow.first
 import ee.movara.app.domain.model.GenreCatalog
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.testTag
+import ee.movara.app.ui.state.UiState
+import ee.movara.app.ui.state.listUiState
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 
 
 // displays movies belonging to the selected genre
@@ -90,9 +96,15 @@ fun SelectedGenreScreen(
                 )
             )
 
+            val contentState = listUiState(
+                items = movies,
+                loading = isLoading,
+                errorMessage = errorMessage
+            )
+
             when {
                 // Show placeholder movie cards initially
-                isLoading -> {
+                contentState == UiState.Loading -> {
                     LazyVerticalGrid(
                         columns = GridCells.Fixed(columns),
                         modifier = Modifier.fillMaxSize(),
@@ -109,7 +121,8 @@ fun SelectedGenreScreen(
                             PulsingPlaceholder(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .aspectRatio(144f / 208f),
+                                    .aspectRatio(144f / 208f)
+                                    .testTag("genre_loading_placeholder"),
                                 cornerRadius = 12.dp
                             )
                         }
@@ -117,7 +130,7 @@ fun SelectedGenreScreen(
                 }
 
                 // Initial loading error
-                errorMessage != null -> {
+                contentState is UiState.Error -> {
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
@@ -128,13 +141,13 @@ fun SelectedGenreScreen(
                             Arrangement.Center
                     ) {
                         Text(
-                            text = errorMessage,
+                            text = contentState.message,
                             color = MovaraText,
                             style =
                                 MaterialTheme.typography.bodyLarge
                         )
 
-                        // Only show retry when it is functional.
+                        // Only show retry when it is functional
                         if (onRetry != null) {
                             Spacer(Modifier.height(16.dp))
 
@@ -148,7 +161,7 @@ fun SelectedGenreScreen(
                 }
 
                 // No movies were returned
-                movies.isEmpty() -> {
+                contentState == UiState.Empty -> {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
@@ -263,26 +276,38 @@ fun SelectedGenreScreen(
                             }
                         }
 
-                        // next page
+
+
+// Keep existing movies visible while loading the next page.
                         if (isLoadingMore) {
-                            item(
-                                span = {
-                                    GridItemSpan(maxLineSpan)
-                                }
-                            ) {
-                                Box(
+                            item(span = { GridItemSpan(maxLineSpan) }) {
+                                Text(
+                                    text = stringResource(
+                                        R.string.selected_genre_loading_more
+                                    ),
+                                    color = MovaraTextSecondary,
+                                    style = MaterialTheme.typography.bodyMedium,
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(16.dp),
-                                    contentAlignment =
-                                        Alignment.Center
-                                ) {
-                                    CircularProgressIndicator(
-                                        color = MovaraGold
-                                    )
-                                }
+                                        .testTag("genre_loading_more_status")
+                                        .semantics {
+                                            liveRegion = LiveRegionMode.Polite
+                                        }
+                                )
+                            }
+
+                            items(columns) {
+                                PulsingPlaceholder(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .aspectRatio(144f / 208f)
+                                        .testTag("genre_loading_more_placeholder"),
+                                    cornerRadius = 12.dp
+                                )
                             }
                         }
+
+
                     }
                 }
             }

@@ -14,6 +14,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import ee.movara.app.ui.state.UiState
+import ee.movara.app.ui.state.listUiState
+
 
 data class SearchUiState(
   val query: String = "",
@@ -24,16 +27,32 @@ data class SearchUiState(
   val page: Int = 0,
   val totalPages: Int = 0
 ) {
-  val canLoadMore: Boolean get() = page > 0 && page < totalPages
-}
+  val canLoadMore: Boolean
+    get() = page > 0 && page < totalPages
 
+  // Keep existing movies visible while loading another page.
+  val contentState: UiState<List<Movie>>
+    get() = listUiState(
+      items = movies,
+      loading = isLoading,
+      errorMessage = requestError
+    )
+}
 class SearchViewModel(
   private val repository: MovieRepository,
   private val savedStateHandle: SavedStateHandle
 ) : ViewModel() {
+
+  private val restoredQuery: String =
+    savedStateHandle["searchQuery"] ?: ""
+
   private val mutableUiState = MutableStateFlow(
-    SearchUiState(query = savedStateHandle["searchQuery"] ?: "")
+    SearchUiState(
+      query = restoredQuery,
+      isLoading = restoredQuery.isNotBlank()
+    )
   )
+
   val uiState = mutableUiState.asStateFlow()
   private var searchJob: Job? = null
 
@@ -41,13 +60,23 @@ class SearchViewModel(
     if (uiState.value.query.isNotBlank()) requestPage(1, debounce = true)
   }
 
+
   fun onQueryChange(query: String) {
     if (query == uiState.value.query) return
+
     searchJob?.cancel()
     savedStateHandle["searchQuery"] = query
-    mutableUiState.value = SearchUiState(query = query)
-    if (query.isNotBlank()) requestPage(1, debounce = true)
+
+    mutableUiState.value = SearchUiState(
+      query = query,
+      isLoading = query.isNotBlank()
+    )
+
+    if (query.isNotBlank()) {
+      requestPage(1, debounce = true)
+    }
   }
+
 
   fun submitSearch() {
     if (uiState.value.query.isBlank()) {
@@ -76,15 +105,28 @@ class SearchViewModel(
     }
   }
 
-  private fun requestPage(page: Int, debounce: Boolean = false) {
+
+  private fun requestPage(
+    page: Int,
+    debounce: Boolean = false
+  ) {
     searchJob?.cancel()
+
     val title = uiState.value.query.trim()
     if (title.isEmpty()) return
+
+    // Show loading immediately, before the coroutine starts.
+    mutableUiState.update {
+      it.copy(
+        isLoading = true,
+        requestError = null,
+        showTitleError = false
+      )
+    }
+
     searchJob = viewModelScope.launch {
-      mutableUiState.update {
-        it.copy(isLoading = true, requestError = null, showTitleError = false)
-      }
       if (debounce) delay(400)
+
       val result = repository.searchMovies(title, page)
       // Even a source that finishes after cancellation cannot restore stale results.
       currentCoroutineContext().ensureActive()

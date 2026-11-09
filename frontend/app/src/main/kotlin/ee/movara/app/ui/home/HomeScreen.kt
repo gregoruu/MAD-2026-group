@@ -42,6 +42,7 @@ import ee.movara.app.ui.components.MovieCard
 import ee.movara.app.ui.components.PulsingPlaceholder
 import ee.movara.app.ui.components.SpotlightCard
 import ee.movara.app.ui.theme.MovaraTheme
+import ee.movara.app.ui.state.UiState
 
 @Composable
 fun HomeScreen(
@@ -120,7 +121,7 @@ internal fun HomeContent(
           }
         }
       }
-      if (state.loading) {
+      if (state.contentState == UiState.Loading) {
         item(key = "loading") {
           Column(verticalArrangement = Arrangement.spacedBy(40.dp)) {
             PulsingPlaceholder(

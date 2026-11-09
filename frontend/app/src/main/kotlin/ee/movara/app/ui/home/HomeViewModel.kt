@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import ee.movara.app.ui.state.UiState
 
 data class HomeRail(
   val sourceMovie: Movie? = null,
@@ -30,8 +31,34 @@ data class HomeUiState(
   val loadFailed: Boolean = false,
   val actionFailed: Boolean = false
 ) {
-  val topPick: Movie? get() = rails.firstNotNullOfOrNull { it.movies.firstOrNull() }
+
+  val topPick: Movie?
+    get() = rails.firstNotNullOfOrNull {
+      it.movies.firstOrNull()
+    }
+
+
+  val contentState: UiState<List<HomeRail>>
+    get() = when {
+      loading -> UiState.Loading
+
+      loadFailed -> UiState.Error(
+        "Could not load recommendations"
+      )
+
+      // At least one rail contains usable movies.
+      rails.any { it.movies.isNotEmpty() } ->
+        UiState.Success(rails)
+
+      // No usable movies, but at least one request failed.
+      rails.any { it.failed } ->
+        UiState.Error("Could not load recommendations")
+
+      // No rails, or all successful rails are empty.
+      else -> UiState.Empty
+    }
 }
+
 
 /** Home presentation; recommendation ranking and filtering can evolve independently of the UI. */
 class HomeViewModel(private val repository: MovieRepository) : ViewModel() {

@@ -45,6 +45,7 @@ import ee.movara.app.ui.theme.MovaraBackground
 import ee.movara.app.ui.theme.MovaraGold
 import ee.movara.app.ui.theme.MovaraText
 import ee.movara.app.ui.theme.MovaraTextSecondary
+import ee.movara.app.ui.state.UiState
 
 @Composable
 fun SearchScreen(
@@ -149,7 +150,7 @@ fun SearchScreen(
               Text(stringResource(R.string.search_retry))
             }
           }
-          state.page > 0 && state.movies.isEmpty() -> Text(
+          state.page > 0 && state.contentState == UiState.Empty -> Text(
             stringResource(R.string.search_no_results),
             color = MovaraTextSecondary,
             style = MaterialTheme.typography.bodyMedium,
