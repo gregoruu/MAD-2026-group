@@ -70,7 +70,11 @@ fun MainNavigation(container: AppContainer) {
 //Shared layout and bottom navigation bar
   Scaffold(
     bottomBar = {
-      if (currentDestination?.hasRoute<AboutRoute>() != true) {
+      val hideBottomBar =
+        currentDestination?.hasRoute<AboutRoute>() == true ||
+                currentDestination?.hasRoute<MovieDetailsRoute>() == true
+
+      if (!hideBottomBar) {
         NavigationBar(
 
         modifier = Modifier.height(80.dp),
@@ -83,9 +87,7 @@ fun MainNavigation(container: AppContainer) {
             filledIcon = R.drawable.ic_nav_home_filled,
             selected = currentDestination?.hasRoute<HomeRoute>() == true,
             onClick = {
-              navController.popBackStack<HomeRoute>(
-                inclusive = false
-              )
+              navController.openTab(HomeRoute)
             }
           )
 

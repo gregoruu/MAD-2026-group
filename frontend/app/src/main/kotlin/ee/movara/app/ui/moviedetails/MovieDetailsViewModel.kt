@@ -14,6 +14,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 data class MovieDetailsUiState(
     val movie: MovieDetails? = null,
@@ -35,7 +37,7 @@ class MovieDetailsViewModel(
         _uiState.asStateFlow()
 
     private var loadJob: Job? = null
-    private var actionInProgress = false
+    private val actionMutex = Mutex()
 
     init {
         MovieListType.entries.forEach { type ->
@@ -109,28 +111,28 @@ class MovieDetailsViewModel(
 
     fun toggleWatched() = toggle(MovieListType.WATCHED)
 
+
     private fun toggle(type: MovieListType) {
-        if (actionInProgress) return
-
-        val details = _uiState.value.movie ?: return
-
-        val selected = when (type) {
-            MovieListType.LIKED -> _uiState.value.isLiked
-            MovieListType.WATCH_LATER -> _uiState.value.isWatchLater
-            MovieListType.WATCHED -> _uiState.value.isWatched
-        }
-
-        val movie = Movie(
-            id = details.id,
-            title = details.title,
-            posterPath = details.posterPath,
-            releaseYear = details.releaseYear
-        )
-
-        actionInProgress = true
-
         viewModelScope.launch {
-            try {
+            actionMutex.withLock {
+                val details = _uiState.value.movie
+                    ?: return@withLock
+
+                // Read the current state when this action starts,
+                // not when it is first queued.
+                val selected = when (type) {
+                    MovieListType.LIKED -> _uiState.value.isLiked
+                    MovieListType.WATCH_LATER -> _uiState.value.isWatchLater
+                    MovieListType.WATCHED -> _uiState.value.isWatched
+                }
+
+                val movie = Movie(
+                    id = details.id,
+                    title = details.title,
+                    posterPath = details.posterPath,
+                    releaseYear = details.releaseYear
+                )
+
                 val result = if (selected) {
                     repository.removeMovie(movie.id, type)
                 } else {
@@ -145,29 +147,54 @@ class MovieDetailsViewModel(
                     }
 
                     is RepositoryResult.Success -> {
-                        // Watched movies must leave Watch Later.
+                        // Update immediately so the next queued action
+                        // observes the latest selected state.
+                        _uiState.update { current ->
+                            when (type) {
+                                MovieListType.LIKED ->
+                                    current.copy(isLiked = !selected)
+
+                                MovieListType.WATCH_LATER ->
+                                    current.copy(isWatchLater = !selected)
+
+                                MovieListType.WATCHED ->
+                                    current.copy(isWatched = !selected)
+                            }
+                        }
+
+                        // Preserve the existing rule:
+                        // marking Watched also removes Watch Later.
                         if (
                             type == MovieListType.WATCHED &&
                             !selected
                         ) {
-                            val removal = repository.removeMovie(
-                                movie.id,
-                                MovieListType.WATCH_LATER
-                            )
+                            when (
+                                val removal = repository.removeMovie(
+                                    movie.id,
+                                    MovieListType.WATCH_LATER
+                                )
+                            ) {
+                                is RepositoryResult.Success -> {
+                                    _uiState.update {
+                                        it.copy(isWatchLater = false)
+                                    }
+                                }
 
-                            if (removal is RepositoryResult.Error) {
-                                _uiState.update {
-                                    it.copy(actionError = removal.message)
+                                is RepositoryResult.Error -> {
+                                    _uiState.update {
+                                        it.copy(
+                                            actionError = removal.message
+                                        )
+                                    }
                                 }
                             }
                         }
                     }
                 }
-            } finally {
-                actionInProgress = false
             }
         }
     }
+
 
     fun clearActionError() {
         _uiState.update { it.copy(actionError = null) }

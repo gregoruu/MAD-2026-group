@@ -205,6 +205,31 @@ class MovieDetailsViewModelTest {
 
         assertNull(viewModel.uiState.value.actionError)
     }
+
+    @Test
+    fun rapidConsecutiveActionsAreBothProcessed() = runTest {
+        val repository = FakeDetailsRepository(details)
+        val viewModel = MovieDetailsViewModel(123, repository)
+
+        advanceUntilIdle()
+
+        // Do not wait between actions.
+        viewModel.toggleLike()
+        viewModel.toggleWatchLater()
+
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.isLiked)
+        assertTrue(viewModel.uiState.value.isWatchLater)
+
+        assertEquals(
+            listOf(
+                123 to MovieListType.LIKED,
+                123 to MovieListType.WATCH_LATER
+            ),
+            repository.saved
+        )
+    }
 }
 
 private fun <T> success(data: T): RepositoryResult.Success<T> =
@@ -313,4 +338,5 @@ private class FakeDetailsRepository(
         listType: MovieListType
     ): Flow<RepositoryResult<Int>> =
         flowOf(unused())
+
 }
