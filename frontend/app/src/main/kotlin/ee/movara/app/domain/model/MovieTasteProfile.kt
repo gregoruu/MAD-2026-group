@@ -4,12 +4,18 @@ package ee.movara.app.domain.model
 data class MovieTastePreferences(
   val genreIds: Set<Int> = emptySet(),
   val favouriteMovieIds: Set<Int> = emptySet(),
-  val minimumRating: Int? = null
+  val minimumRating: Int? = null,
+  /** Optional display metadata so saved favourites remain recognizable offline. */
+  val favouriteTitles: Map<Int, String> = emptyMap()
 ) {
   init {
     require(genreIds.size <= MAX_GENRES) { "Select at most $MAX_GENRES genres" }
     require(genreIds.all { it > 0 }) { "Genre IDs must be positive" }
     require(favouriteMovieIds.all { it > 0 }) { "Movie IDs must be positive" }
+    require(favouriteTitles.keys.all { it in favouriteMovieIds }) {
+      "Favourite titles must belong to selected movies"
+    }
+    require(favouriteTitles.values.all { it.isNotBlank() }) { "Favourite titles must not be blank" }
     require(minimumRating == null || minimumRating in 6..8) {
       "Minimum TMDB rating must be absent, 6, 7 or 8"
     }

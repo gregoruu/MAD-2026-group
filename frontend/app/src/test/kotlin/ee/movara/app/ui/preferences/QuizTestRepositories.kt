@@ -65,6 +65,7 @@ internal fun quizPage(
 internal class QuizMovieRepository : MovieRepository {
   val requests = mutableListOf<Pair<String, Int>>()
   val discoveryRequests = mutableListOf<Pair<MovieDiscovery, Int>>()
+  val detailsRequests = mutableListOf<Int>()
   var respond: suspend (String, Int) -> RepositoryResult<MoviePage> = { source, page ->
     quizPage(listOf(quizMovie(page, source)), page)
   }
@@ -80,8 +81,10 @@ internal class QuizMovieRepository : MovieRepository {
   override suspend fun searchMovies(title: String, page: Int) = request("search:$title", page)
   override suspend fun trendingMovies(page: Int) = request("trending", page)
   override suspend fun moviesInGenre(genreId: Int, page: Int) = request("genre:$genreId", page)
-  override suspend fun movieDetails(movieId: Int): RepositoryResult<MovieDetails> =
-    RepositoryResult.Error(ErrorCategory.NETWORK, "Details unavailable")
+  override suspend fun movieDetails(movieId: Int): RepositoryResult<MovieDetails> {
+    detailsRequests += movieId
+    return RepositoryResult.Error(ErrorCategory.NETWORK, "Details unavailable")
+  }
   override suspend fun recommendedMovies(movieId: Int, page: Int): RepositoryResult<MoviePage> =
     error("Quiz must not request recommendations")
   override fun observeMovies(listType: MovieListType): Flow<RepositoryResult<List<Movie>>> =

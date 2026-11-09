@@ -210,7 +210,9 @@ class MoviePreferenceQuizViewModelTest {
     model.finish()
     advanceUntilIdle()
     assertTrue(model.uiState.value.finished)
-    assertEquals(MovieTastePreferences(setOf(28), setOf(603), 7), taste.stored.value.preferences)
+    assertEquals(MovieTastePreferences(
+      setOf(28), setOf(603), 7, favouriteTitles = mapOf(603 to "Movie 603")
+    ), taste.stored.value.preferences)
   }
 
   @Test fun saveCompletesOnlyAfterSuccessfulWriteAndIgnoresDoubleTap() = runTest(dispatcher) {
@@ -312,6 +314,38 @@ class MoviePreferenceQuizViewModelTest {
     model.onQueryChange("Favourite")
     advanceUntilIdle()
     assertEquals(listOf(1), model.uiState.value.movies.map { it.id })
+  }
+
+  @Test fun savedFavouriteTitlesAreAvailableInANewOfflineSessionWithoutDetailsRequests() =
+    runTest(dispatcher) {
+      val original = model()
+      advanceUntilIdle()
+      original.toggleMovie(quizMovie(603, "The Matrix"))
+      original.finish()
+      advanceUntilIdle()
+
+      val reopened = MoviePreferenceQuizViewModel(taste, movies, SavedStateHandle()) { today }
+      advanceUntilIdle()
+      assertEquals(setOf(603), reopened.uiState.value.favouriteMovieIds)
+      assertEquals(mapOf(603 to "The Matrix"), reopened.uiState.value.favouriteTitles)
+      assertEquals(mapOf(603 to "The Matrix"), taste.stored.value.preferences.favouriteTitles)
+      assertTrue(movies.detailsRequests.isEmpty())
+    }
+
+  @Test fun legacyFavouriteWithoutATitleCanBeRemovedAndSavedOffline() = runTest(dispatcher) {
+    taste.stored.value = MovieTasteProfile(
+      MovieTastePreferences(favouriteMovieIds = setOf(603, 550)), OnboardingStatus.COMPLETED
+    )
+    val model = model()
+    advanceUntilIdle()
+    assertEquals(setOf(603, 550), model.uiState.value.favouriteMovieIds)
+    assertTrue(model.uiState.value.favouriteTitles.isEmpty())
+    model.removeFavourite(603)
+    model.finish()
+    advanceUntilIdle()
+    assertEquals(setOf(550), taste.stored.value.preferences.favouriteMovieIds)
+    assertTrue(taste.stored.value.preferences.favouriteTitles.isEmpty())
+    assertTrue(model.uiState.value.finished)
   }
 
   @Test fun profileReadFailureDoesNotSaveDefaultsAndCanBeRetried() = runTest(dispatcher) {

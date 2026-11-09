@@ -7,7 +7,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -306,7 +306,9 @@ private fun FavouriteChoices(
           }
         }
         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-          items(state.favouriteTitles.toList(), key = { it.first }) { (id, title) ->
+          itemsIndexed(state.favouriteMovieIds.sorted(), key = { _, id -> id }) { index, id ->
+            val title = state.favouriteTitles[id]?.takeIf { it.isNotBlank() }
+              ?: stringResource(R.string.quiz_unnamed_favourite, index + 1)
             val removeLabel = stringResource(R.string.quiz_remove_favourite, title)
             InputChip(
               selected = true,
@@ -326,6 +328,13 @@ private fun FavouriteChoices(
               }
             )
           }
+        }
+        if (state.favouriteMovieIds.any { state.favouriteTitles[it].isNullOrBlank() }) {
+          Text(
+            stringResource(R.string.quiz_missing_titles),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+          )
         }
         Text(
           stringResource(R.string.quiz_selection_hint),

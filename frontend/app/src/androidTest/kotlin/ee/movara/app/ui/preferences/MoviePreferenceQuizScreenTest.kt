@@ -64,6 +64,35 @@ class MoviePreferenceQuizScreenTest {
     compose.runOnIdle { assertEquals(603, selected) }
   }
 
+  @Test fun offlineFavouritesWithAndWithoutTitlesCanBeIndividuallyRemoved() {
+    val state = mutableStateOf(MoviePreferenceQuizState(
+      loadingProfile = false, step = QuizStep.MOVIES, movieLoadFailed = true,
+      favouriteMovieIds = setOf(603, 550), favouriteTitles = mapOf(603 to "The Matrix")
+    ))
+    val removed = mutableListOf<Int>()
+    compose.setContent {
+      MovaraTheme {
+        MoviePreferenceQuizContent(
+          state.value,
+          isEditing = true,
+          actions = QuizActions(removeFavourite = { id ->
+            removed += id
+            state.value = state.value.copy(
+              favouriteMovieIds = state.value.favouriteMovieIds - id,
+              favouriteTitles = state.value.favouriteTitles - id
+            )
+          })
+        )
+      }
+    }
+    compose.onNodeWithContentDescription("Remove Saved favourite 1 from favourites")
+      .assertIsDisplayed().performClick()
+    compose.onNodeWithContentDescription("Remove The Matrix from favourites")
+      .assertIsDisplayed().performClick()
+    compose.onNodeWithText("0 selected").assertIsDisplayed()
+    compose.runOnIdle { assertEquals(listOf(550, 603), removed) }
+  }
+
   @Test fun networkErrorOffersRetryAndDoesNotDisableContinue() {
     var retried = false
     var continued = false

@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.PreferencesSerializer
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringSetPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
 import ee.movara.app.domain.model.MovieTastePreferences
 import ee.movara.app.domain.model.MovieTasteProfile
 import ee.movara.app.domain.model.OnboardingStatus
@@ -45,7 +46,10 @@ class DataStoreMovieTasteRepositoryTest {
   @Test
   fun completedProfileSurvivesClosingAndReopeningTheStore() = runTest {
     val file = storeFile()
-    val preferences = MovieTastePreferences(setOf(28, 878), setOf(603, 550), 7)
+    val preferences = MovieTastePreferences(
+      setOf(28, 878), setOf(603, 550), 7,
+      favouriteTitles = mapOf(603 to "The Matrix", 550 to "Fight Club: café edition")
+    )
     val original = openStore(file)
     try {
       original.repository.savePreferences(preferences)
@@ -91,8 +95,12 @@ class DataStoreMovieTasteRepositoryTest {
   fun editingReplacesSelectionsAndCanRemoveTheRatingLimit() = runTest {
     val fixture = openStore()
     try {
-      fixture.repository.savePreferences(MovieTastePreferences(setOf(28, 35), setOf(603), 8))
-      val edited = MovieTastePreferences(setOf(18), setOf(550), null)
+      fixture.repository.savePreferences(MovieTastePreferences(
+        setOf(28, 35), setOf(603), 8, favouriteTitles = mapOf(603 to "The Matrix")
+      ))
+      val edited = MovieTastePreferences(
+        setOf(18), setOf(550), null, favouriteTitles = mapOf(550 to "Fight Club")
+      )
       fixture.repository.savePreferences(edited)
       assertEquals(
         MovieTasteProfile(edited, OnboardingStatus.COMPLETED),
@@ -194,13 +202,51 @@ class DataStoreMovieTasteRepositoryTest {
   }
 
   @Test
+  fun legacyIdsWithoutTitlesKeepTheCompletedProfileReadable() = runTest {
+    val fixture = openStore()
+    try {
+      fixture.store.edit {
+        it[stringSetPreferencesKey("favourite_movie_ids")] = setOf("603", "550")
+        it[stringPreferencesKey("onboarding_status")] = "COMPLETED"
+      }
+      val profile = fixture.repository.profile.first()
+      assertEquals(setOf(603, 550), profile.preferences.favouriteMovieIds)
+      assertTrue(profile.preferences.favouriteTitles.isEmpty())
+      assertFalse(profile.needsOnboarding)
+    } finally {
+      fixture.job.cancelAndJoin()
+    }
+  }
+
+  @Test
+  fun invalidOptionalTitlesDoNotDiscardFavouriteIdsOrOnboardingStatus() = runTest {
+    val fixture = openStore()
+    try {
+      fixture.repository.savePreferences(MovieTastePreferences(
+        favouriteMovieIds = setOf(603), favouriteTitles = mapOf(603 to "The Matrix")
+      ))
+      for (encoded in listOf("{broken", """{"603":"  ","999":"Not selected"}""")) {
+        fixture.store.edit { it[stringPreferencesKey("favourite_titles")] = encoded }
+        val profile = fixture.repository.profile.first()
+        assertEquals(setOf(603), profile.preferences.favouriteMovieIds)
+        assertTrue(profile.preferences.favouriteTitles.isEmpty())
+        assertFalse(profile.needsOnboarding)
+      }
+    } finally {
+      fixture.job.cancelAndJoin()
+    }
+  }
+
+  @Test
   fun invalidQuizValuesAreRejected() {
     for (invalid in listOf<() -> MovieTastePreferences>(
       { MovieTastePreferences(genreIds = setOf(1, 2, 3, 4, 5, 6)) },
       { MovieTastePreferences(genreIds = setOf(0)) },
       { MovieTastePreferences(favouriteMovieIds = setOf(-1)) },
       { MovieTastePreferences(minimumRating = 5) },
-      { MovieTastePreferences(minimumRating = 9) }
+      { MovieTastePreferences(minimumRating = 9) },
+      { MovieTastePreferences(favouriteMovieIds = setOf(603), favouriteTitles = mapOf(999 to "Other")) },
+      { MovieTastePreferences(favouriteMovieIds = setOf(603), favouriteTitles = mapOf(603 to " ")) }
     )) {
       try {
         invalid()

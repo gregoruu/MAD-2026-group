@@ -89,6 +89,7 @@ class MoviePreferenceQuizViewModel(
           state.update { it.copy(
             genreIds = profile.preferences.genreIds,
             favouriteMovieIds = profile.preferences.favouriteMovieIds,
+            favouriteTitles = profile.preferences.favouriteTitles,
             minimumRating = profile.preferences.minimumRating
           ) }
         }
@@ -207,8 +208,14 @@ class MoviePreferenceQuizViewModel(
 
   fun finish() {
     if (!canEdit()) return
+    val current = state.value
     val preferences = MovieTastePreferences(
-      state.value.genreIds, state.value.favouriteMovieIds, state.value.minimumRating
+      genreIds = current.genreIds,
+      favouriteMovieIds = current.favouriteMovieIds,
+      minimumRating = current.minimumRating,
+      favouriteTitles = current.favouriteTitles.filter {
+        (id, title) -> id in current.favouriteMovieIds && title.isNotBlank()
+      }
     )
     save { tasteRepository.savePreferences(preferences) }
   }

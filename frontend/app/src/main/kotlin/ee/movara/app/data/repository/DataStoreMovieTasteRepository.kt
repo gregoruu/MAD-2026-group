@@ -12,6 +12,7 @@ import ee.movara.app.domain.model.MovieTasteProfile
 import ee.movara.app.domain.model.OnboardingStatus
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.serialization.json.Json
 
 class DataStoreMovieTasteRepository(
   private val dataStore: DataStore<Preferences>
@@ -22,6 +23,7 @@ class DataStoreMovieTasteRepository(
     dataStore.edit { stored ->
       stored[GENRE_IDS] = preferences.genreIds.map(Int::toString).toSet()
       stored[FAVOURITE_MOVIE_IDS] = preferences.favouriteMovieIds.map(Int::toString).toSet()
+      stored[FAVOURITE_TITLES] = Json.encodeToString(preferences.favouriteTitles)
       val minimumRating = preferences.minimumRating
       if (minimumRating == null) {
         stored.remove(MINIMUM_RATING)
@@ -41,11 +43,13 @@ class DataStoreMovieTasteRepository(
   }
 
   private fun Preferences.toProfile(): MovieTasteProfile = try {
+    val favouriteIds = this[FAVOURITE_MOVIE_IDS].orEmpty().map(String::toInt).toSet()
     MovieTasteProfile(
       preferences = MovieTastePreferences(
         genreIds = this[GENRE_IDS].orEmpty().map(String::toInt).toSet(),
-        favouriteMovieIds = this[FAVOURITE_MOVIE_IDS].orEmpty().map(String::toInt).toSet(),
-        minimumRating = this[MINIMUM_RATING]
+        favouriteMovieIds = favouriteIds,
+        minimumRating = this[MINIMUM_RATING],
+        favouriteTitles = readFavouriteTitles(favouriteIds)
       ),
       onboardingStatus = this[ONBOARDING_STATUS]?.let(OnboardingStatus::valueOf)
         ?: OnboardingStatus.NOT_STARTED
@@ -55,9 +59,21 @@ class DataStoreMovieTasteRepository(
     throw CorruptionException("Cannot read movie taste preferences", exception)
   }
 
+  private fun Preferences.readFavouriteTitles(ids: Set<Int>): Map<Int, String> {
+    val encoded = this[FAVOURITE_TITLES] ?: return emptyMap()
+    return try {
+      Json.decodeFromString<Map<Int, String>>(encoded)
+        .filter { (id, title) -> id in ids && title.isNotBlank() }
+    } catch (_: IllegalArgumentException) {
+      // Optional display metadata must not make an otherwise valid legacy profile unreadable.
+      emptyMap()
+    }
+  }
+
   private companion object {
     val GENRE_IDS = stringSetPreferencesKey("genre_ids")
     val FAVOURITE_MOVIE_IDS = stringSetPreferencesKey("favourite_movie_ids")
+    val FAVOURITE_TITLES = stringPreferencesKey("favourite_titles")
     val MINIMUM_RATING = intPreferencesKey("minimum_rating")
     val ONBOARDING_STATUS = stringPreferencesKey("onboarding_status")
   }

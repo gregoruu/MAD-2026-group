@@ -18,6 +18,8 @@
     <string name="quiz_selected_count">%1$d selected</string>
     <string name="quiz_clear_selection">Clear selection</string>
     <string name="quiz_remove_favourite">Remove %1$s from favourites</string>
+    <string name="quiz_unnamed_favourite">Saved favourite %1$d</string>
+    <string name="quiz_missing_titles">Some saved titles are unavailable. You can still remove these selections.</string>
     <string name="quiz_show_more">Show more</string>
     <string name="quiz_movies_loading">Loading movies…</string>
     <string name="quiz_movies_error">Could not load some movies. You can retry or continue with your selections.</string>

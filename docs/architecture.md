@@ -104,8 +104,15 @@ backed by one application-scoped Preferences DataStore in
 
 The profile stores up to five preferred genre IDs, favourite movie IDs, an optional
 minimum TMDB rating (6, 7 or 8), and an onboarding status: `NOT_STARTED`, `COMPLETED`
-or `SKIPPED`. Quiz favourites are separate from the Room Like, Watch Later and
+or `SKIPPED`. Favourite titles are saved as optional display metadata in the same
+atomic update, so reopening the quiz does not require network access to recognize
+saved selections. Quiz favourites are separate from the Room Like, Watch Later and
 Watched lists; selecting one does not change any list membership.
+
+Older profiles containing only IDs remain readable. Missing titles can be resolved
+through movie details, but every selected ID always has a removable chip, using a
+numbered fallback label when its title is unavailable. Unreadable optional title
+metadata is ignored without discarding IDs or resetting onboarding status.
 
 Draft answers belong to the quiz UI state. Saving atomically replaces all preferences
 and marks onboarding completed; later edits use the same operation. Skipping marks
