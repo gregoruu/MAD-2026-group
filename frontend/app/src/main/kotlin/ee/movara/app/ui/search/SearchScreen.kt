@@ -45,6 +45,8 @@ import ee.movara.app.ui.theme.MovaraBackground
 import ee.movara.app.ui.theme.MovaraGold
 import ee.movara.app.ui.theme.MovaraText
 import ee.movara.app.ui.theme.MovaraTextSecondary
+import androidx.compose.ui.platform.testTag
+import ee.movara.app.ui.components.EmptyState
 
 @Composable
 fun SearchScreen(
@@ -149,12 +151,13 @@ fun SearchScreen(
               Text(stringResource(R.string.search_retry))
             }
           }
-          state.page > 0 && state.movies.isEmpty() -> Text(
-            stringResource(R.string.search_no_results),
-            color = MovaraTextSecondary,
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
+
+          state.page > 0 && state.movies.isEmpty() -> EmptyState(
+            message = stringResource(R.string.search_no_results),
+            iconRes = R.drawable.ic_ui_sentiment_dissatisfied,
+            modifier = Modifier.testTag("search_empty_state")
           )
+
           state.canLoadMore -> TextButton(onClick = onLoadMore) {
             Text(stringResource(R.string.search_load_more))
           }

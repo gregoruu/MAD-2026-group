@@ -1,6 +1,7 @@
 
 package ee.movara.app.ui.selectedgenre
 
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -9,6 +10,7 @@ import ee.movara.app.ui.theme.MovaraTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
+import androidx.compose.ui.test.onNodeWithTag
 
 class SelectedGenreScreenTest {
 
@@ -73,4 +75,27 @@ class SelectedGenreScreenTest {
             assertEquals(1, retryCount)
         }
     }
+
+    @Test
+    fun emptyGenreShowsMessageAndIcon() {
+        composeRule.setContent {
+            MovaraTheme {
+                SelectedGenreScreen(
+                    genreId = 28,
+                    movies = emptyList(),
+                    onBack = {},
+                    onMovieClick = {}
+                )
+            }
+        }
+
+        composeRule
+            .onNodeWithText("No movies found for this genre.")
+            .assertIsDisplayed()
+
+        composeRule
+            .onNodeWithTag("empty_state_icon")
+            .assertIsDisplayed()
+    }
+
 }

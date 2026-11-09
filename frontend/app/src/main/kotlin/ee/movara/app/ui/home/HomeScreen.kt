@@ -42,6 +42,7 @@ import ee.movara.app.ui.components.MovieCard
 import ee.movara.app.ui.components.PulsingPlaceholder
 import ee.movara.app.ui.components.SpotlightCard
 import ee.movara.app.ui.theme.MovaraTheme
+import ee.movara.app.ui.components.EmptyState
 
 @Composable
 fun HomeScreen(
@@ -154,8 +155,16 @@ internal fun HomeContent(
         }
         if (state.loadFailed) {
           item(key = "error") { HomeMessage(R.string.home_load_error, true, onRetry, screenMargin) }
+
         } else if (state.rails.isEmpty()) {
-          item(key = "empty") { HomeMessage(R.string.home_empty, true, onRetry, screenMargin) }
+          item(key = "empty") {
+            EmptyState(
+              message = stringResource(R.string.home_empty),
+              modifier = Modifier.padding(
+                horizontal = screenMargin
+              )
+            )
+          }
         }
         items(state.rails, key = { it.sourceMovie?.id ?: "trending" }) { rail ->
           Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -169,7 +178,14 @@ internal fun HomeContent(
             )
             when {
               rail.failed -> HomeMessage(R.string.home_load_error, true, onRetry, screenMargin)
-              rail.movies.isEmpty() -> HomeMessage(R.string.home_empty, false, onRetry, screenMargin)
+
+              rail.movies.isEmpty() -> EmptyState(
+                message = stringResource(R.string.home_empty),
+                modifier = Modifier.padding(
+                  horizontal = screenMargin
+                )
+              )
+
               else -> LazyRow(
                 contentPadding = PaddingValues(horizontal = screenMargin),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)

@@ -23,6 +23,7 @@ import ee.movara.app.ui.theme.*
 import kotlinx.coroutines.flow.first
 import ee.movara.app.domain.model.GenreCatalog
 import androidx.compose.ui.res.stringResource
+import ee.movara.app.ui.components.EmptyState
 
 
 // displays movies belonging to the selected genre
@@ -155,10 +156,8 @@ fun SelectedGenreScreen(
                             .padding(24.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            text = stringResource(R.string.selected_genre_empty),
-                            color = MovaraTextSecondary,
-                            style = MaterialTheme.typography.bodyLarge
+                        EmptyState(
+                            message = stringResource(R.string.selected_genre_empty)
                         )
                     }
                 }

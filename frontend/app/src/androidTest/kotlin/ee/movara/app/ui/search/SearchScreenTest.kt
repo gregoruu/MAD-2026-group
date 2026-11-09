@@ -14,6 +14,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
+import androidx.compose.ui.test.onNodeWithTag
 
 class SearchScreenTest {
   @get:Rule val compose = createComposeRule()
@@ -70,24 +71,29 @@ class SearchScreenTest {
         )
       }
     }
-    compose.onNodeWithText("No movies found.").assertDoesNotExist()
+    compose.onNodeWithText("No results found").assertDoesNotExist()
 
     compose.runOnIdle {
       state.value = SearchUiState(query = "Unknown", isLoading = true)
     }
     compose.onNodeWithContentDescription("Searching…").assertIsDisplayed()
-    compose.onNodeWithText("No movies found.").assertDoesNotExist()
+    compose.onNodeWithText("No results found").assertDoesNotExist()
 
     compose.runOnIdle {
       state.value = SearchUiState(query = "Unknown", requestError = "Network error")
     }
     compose.onNodeWithText("Network error").assertIsDisplayed()
-    compose.onNodeWithText("No movies found.").assertDoesNotExist()
+    compose.onNodeWithText("No results found").assertDoesNotExist()
 
     compose.runOnIdle {
       state.value = SearchUiState(query = "Unknown", page = 1)
     }
-    compose.onNodeWithText("No movies found.").assertIsDisplayed()
+    compose.onNodeWithText("No results found").assertIsDisplayed()
+    compose.onNodeWithTag("search_empty_state")
+      .assertIsDisplayed()
+
+    compose.onNodeWithTag("empty_state_icon")
+      .assertIsDisplayed()
   }
 
   @Test fun clearButtonSendsEmptyQuery() {
