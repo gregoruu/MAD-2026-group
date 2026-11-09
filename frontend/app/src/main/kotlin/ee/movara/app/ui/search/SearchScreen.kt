@@ -47,8 +47,7 @@ import ee.movara.app.ui.theme.MovaraTextSecondary
 import androidx.compose.ui.platform.testTag
 import ee.movara.app.ui.components.EmptyState
 import androidx.compose.ui.semantics.LiveRegionMode
-import androidx.compose.ui.semantics.liveRegion
-import androidx.compose.ui.semantics.semantics
+import ee.movara.app.ui.state.UiState
 
 @Composable
 fun SearchScreen(
@@ -154,7 +153,7 @@ fun SearchScreen(
             }
           }
 
-          state.page > 0 && state.movies.isEmpty() -> EmptyState(
+          state.page > 0 && state.contentState == UiState.Empty -> EmptyState(
             message = stringResource(R.string.search_no_results),
             iconRes = R.drawable.ic_ui_sentiment_dissatisfied,
             modifier = Modifier

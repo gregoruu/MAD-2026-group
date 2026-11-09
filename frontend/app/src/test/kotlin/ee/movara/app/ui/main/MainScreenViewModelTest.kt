@@ -17,6 +17,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertSame
 import org.junit.Before
 import org.junit.Test
+import ee.movara.app.ui.state.UiState
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class MainScreenViewModelTest {
@@ -35,7 +36,7 @@ class MainScreenViewModelTest {
   @Test
   fun uiState_initiallyLoading() = runTest {
     val viewModel = MainScreenViewModel(FakeDataRepository(flowOf(listOf("Movara"))))
-    assertEquals(MainScreenUiState.Loading, viewModel.uiState.value)
+    assertEquals(UiState.Loading, viewModel.uiState.value)
   }
 
   @Test
@@ -43,7 +44,7 @@ class MainScreenViewModelTest {
     val data = listOf("Movara")
     val viewModel = MainScreenViewModel(FakeDataRepository(flowOf(data)))
     backgroundScope.launch(dispatcher) { viewModel.uiState.collect() }
-    assertEquals(MainScreenUiState.Success(data), viewModel.uiState.value)
+    assertEquals(UiState.Success(data), viewModel.uiState.value)
   }
 
   @Test
@@ -51,7 +52,7 @@ class MainScreenViewModelTest {
     val error = IllegalStateException("Unable to load data")
     val viewModel = MainScreenViewModel(FakeDataRepository(flow { throw error }))
     backgroundScope.launch(dispatcher) { viewModel.uiState.collect() }
-    assertSame(error, (viewModel.uiState.value as MainScreenUiState.Error).throwable)
+    assertSame(error, (viewModel.uiState.value as UiState.Error).cause)
   }
 }
 
