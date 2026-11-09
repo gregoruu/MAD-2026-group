@@ -3,6 +3,8 @@ package ee.movara.app.data.remote
 import ee.movara.app.domain.model.Genre
 import ee.movara.app.domain.model.Movie
 import ee.movara.app.domain.model.MovieDetails
+import java.time.LocalDate
+import java.time.format.DateTimeParseException
 
 /**
  * Turns TMDB responses into the app's own models.
@@ -53,7 +55,11 @@ fun MovieSummaryDto.toDomainOrNull(): Movie? {
     id = usableId,
     title = usableTitle,
     posterPath = imagePathOrNull(posterPath),
-    releaseYear = releaseYearOf(releaseDate)
+    releaseYear = releaseYearOf(releaseDate),
+    genreIds = genreIds.filter { it > 0 }.toSet(),
+    rating = ratingOf(voteAverage, voteCount),
+    voteCount = voteCount?.takeIf { it >= 0 },
+    releaseDate = releaseDateOf(releaseDate)
   )
 }
 
@@ -126,6 +132,13 @@ private fun releaseYearOf(releaseDate: String?): Int? {
   return releaseDate.substring(0, 4).toIntOrNull()
 }
 
+/** A complete calendar date is required when excluding unreleased movies. */
+private fun releaseDateOf(value: String?): LocalDate? = try {
+  value?.let(LocalDate::parse)
+} catch (_: DateTimeParseException) {
+  null
+}
+
 /**
  * TMDB sends 0 rather than omitting the runtime when it does not know it. The design
  * says a missing runtime is not shown at all, so 0 has to become "unknown" here.
@@ -143,7 +156,7 @@ private fun runtimeMinutesOf(runtime: Int?): Int? {
  * the screen leaves the rating out.
  */
 private fun ratingOf(voteAverage: Double?, voteCount: Int?): Double? {
-  if (voteAverage == null || voteAverage <= 0.0) {
+  if (voteAverage == null || !voteAverage.isFinite() || voteAverage <= 0.0 || voteAverage > 10.0) {
     return null
   }
   if (voteCount != null && voteCount <= 0) {

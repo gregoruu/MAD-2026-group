@@ -158,6 +158,11 @@ private fun <T> success(data: T) = RepositoryResult.Success(data, DataSource.LOC
 private val failure = RepositoryResult.Error(ErrorCategory.NETWORK, "Unavailable")
 
 private class HomeRepository : MovieRepository {
+  override suspend fun discoverMovies(
+    options: ee.movara.app.domain.model.MovieDiscovery,
+    page: Int
+  ): RepositoryResult<MoviePage> = error("Unused")
+
   val liked = MutableStateFlow<RepositoryResult<List<Movie>>>(success(emptyList()))
   private val saved = MutableStateFlow<RepositoryResult<List<Movie>>>(success(emptyList()))
   val watched = MutableStateFlow<RepositoryResult<List<Movie>>>(success(emptyList()))

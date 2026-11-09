@@ -38,6 +38,21 @@ internal class FakeTmdbApiService : TmdbApiService {
     requested()
     return pageResponse.copy(page = page)
   }
+  var lastDiscovery: DiscoveryCall? = null
+  data class DiscoveryCall(
+    val genreId: Int?, val sortBy: String, val minimumRating: Int?,
+    val minimumVotes: Int?, val releasedBy: String?, val page: Int
+  )
+
+  override suspend fun discoverMovies(
+    genreId: Int?, sortBy: String, minimumRating: Int?,
+    minimumVotes: Int?, releasedBy: String?, page: Int
+  ): MoviePageDto {
+    lastDiscovery = DiscoveryCall(genreId, sortBy, minimumRating, minimumVotes, releasedBy, page)
+    requested()
+    return pageResponse.copy(page = page)
+  }
+
   override suspend fun movieDetails(movieId: Int): MovieDetailsDto {
     requested()
     return detailsResponse.copy(id = movieId)

@@ -1,5 +1,6 @@
 package ee.movara.app.data.remote
 
+import java.time.LocalDate
 import kotlinx.serialization.SerializationException
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -48,6 +49,10 @@ class MoviePageMappingTest {
     assertEquals("The Matrix", movies[0].title)
     assertEquals("/matrix.jpg", movies[0].posterPath)
     assertEquals(1999, movies[0].releaseYear)
+    assertEquals(LocalDate.of(1999, 3, 30), movies[0].releaseDate)
+    assertEquals(setOf(28, 878), movies[0].genreIds)
+    assertEquals(8.2, movies[0].rating!!, 0.001)
+    assertEquals(25000, movies[0].voteCount)
   }
 
   @Test
@@ -101,6 +106,27 @@ class MoviePageMappingTest {
     val movies = tmdbJson.decodeFromString(MoviePageDto.serializer(), json).toDomainMovies()
 
     assertNull(movies[0].releaseYear)
+  }
+
+  @Test
+  fun discoveryMetadataHandlesMissingAndInvalidValues() {
+    val sparse = MovieSummaryDto(id = 1, title = "Sparse").toDomainOrNull()!!
+    assertTrue(sparse.genreIds.isEmpty())
+    assertNull(sparse.rating)
+    assertNull(sparse.voteCount)
+    assertNull(sparse.releaseDate)
+
+    val invalid = MovieSummaryDto(
+      id = 2, title = "Invalid metadata", releaseDate = "2026-02-30",
+      genreIds = listOf(28, 28, 0, -1), voteAverage = 11.0, voteCount = -1
+    ).toDomainOrNull()!!
+    assertEquals(setOf(28), invalid.genreIds)
+    assertNull(invalid.rating)
+    assertNull(invalid.voteCount)
+    assertNull(invalid.releaseDate)
+    assertNull(MovieSummaryDto(
+      id = 3, title = "No votes", voteAverage = 9.0, voteCount = 0
+    ).toDomainOrNull()!!.rating)
   }
 
   @Test

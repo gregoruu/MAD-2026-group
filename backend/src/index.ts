@@ -32,8 +32,22 @@ function isSearchQuery(value: string): boolean {
   return value.length <= MAX_QUERY_LENGTH;
 }
 
-function isPopularityDescending(value: string): boolean {
-  return value === "popularity.desc";
+function isDiscoverySort(value: string): boolean {
+  return ["popularity.desc", "vote_count.desc", "vote_average.desc"].includes(value);
+}
+
+function isMinimumRating(value: string): boolean {
+  return /^(0|[1-9]|10)$/.test(value);
+}
+
+function isMinimumVotes(value: string): boolean {
+  return /^(0|[1-9]\d{0,9})$/.test(value) && Number(value) <= 2147483647;
+}
+
+function isReleaseDate(value: string): boolean {
+  if (!/^[1-9]\d{3}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(value);
+  return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
 }
 
 function isCredits(value: string): boolean {
@@ -60,8 +74,11 @@ const ENDPOINTS: Endpoint[] = [
   {
     path: /^\/discover\/movie$/,
     parameters: new Map([
-      ["sort_by", isPopularityDescending],
+      ["sort_by", isDiscoverySort],
       ["with_genres", isGenreId],
+      ["vote_average.gte", isMinimumRating],
+      ["vote_count.gte", isMinimumVotes],
+      ["primary_release_date.lte", isReleaseDate],
       ["page", isPage],
     ]),
   },

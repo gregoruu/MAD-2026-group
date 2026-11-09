@@ -115,7 +115,7 @@ describe("proxyRequest", () => {
     const paths = [
       "/movie/550?append_to_response=credits,videos",
       "/movie/550?append_to_response=videos",
-      "/discover/movie?sort_by=vote_average.desc",
+      "/discover/movie?sort_by=release_date.desc",
       "/discover/movie?with_genres=28,12",
       "/discover/movie?with_genres=abc",
       "/trending/movie/week?page=0",
@@ -132,6 +132,53 @@ describe("proxyRequest", () => {
       const response = await proxyRequest(new Request(PROXY_URL + path), API_KEY);
       expect(response.status, path).toBe(400);
       expect(fetchMock, path).not.toHaveBeenCalled();
+    }
+  });
+
+  it("forwards discovery sorting and filters with and without a genre", async () => {
+    for (const sort of ["popularity.desc", "vote_count.desc", "vote_average.desc"]) {
+      for (const genre of ["", "&with_genres=28"]) {
+        const fetchMock = mockTmdb(Response.json({}));
+        const path = "/discover/movie?sort_by=" + sort + genre +
+          "&vote_average.gte=6&vote_count.gte=100&primary_release_date.lte=2026-11-09&page=2";
+        const response = await proxyRequest(new Request(PROXY_URL + path), API_KEY);
+        expect(response.status).toBe(200);
+        const url = forwardedUrl(fetchMock);
+        expect(url.searchParams.get("sort_by")).toBe(sort);
+        expect(url.searchParams.get("vote_average.gte")).toBe("6");
+        expect(url.searchParams.get("vote_count.gte")).toBe("100");
+        expect(url.searchParams.get("primary_release_date.lte")).toBe("2026-11-09");
+        expect(url.searchParams.get("with_genres")).toBe(genre ? "28" : null);
+      }
+    }
+  });
+
+  it("rejects malformed discovery filters before making an upstream request", async () => {
+    const filters = [
+      "vote_average.gte=-1", "vote_average.gte=11", "vote_average.gte=6.5",
+      "vote_count.gte=-1", "vote_count.gte=1.5", "vote_count.gte=2147483648",
+      "vote_count.gte=NaN", "vote_count.gte=1e3",
+      "primary_release_date.lte=2026-02-30", "primary_release_date.lte=2026-02-29",
+      "primary_release_date.lte=2026-1-01", "primary_release_date.lte=not-a-date",
+      "vote_average.gte=6&vote_average.gte=7",
+    ];
+    for (const filter of filters) {
+      const fetchMock = mockTmdb(Response.json({}));
+      const response = await proxyRequest(new Request(PROXY_URL + "/discover/movie?" + filter), API_KEY);
+      expect(response.status, filter).toBe(400);
+      expect(fetchMock, filter).not.toHaveBeenCalled();
+    }
+  });
+
+  it("accepts valid boundary values and leap dates", async () => {
+    for (const filter of [
+      "vote_average.gte=0", "vote_average.gte=10",
+      "vote_count.gte=0", "vote_count.gte=2147483647",
+      "primary_release_date.lte=2024-02-29",
+    ]) {
+      const fetchMock = mockTmdb(Response.json({}));
+      const response = await proxyRequest(new Request(PROXY_URL + "/discover/movie?" + filter), API_KEY);
+      expect(response.status, filter).toBe(200);
     }
   });
 

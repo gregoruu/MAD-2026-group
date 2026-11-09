@@ -3,6 +3,7 @@ package ee.movara.app
 
 
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -31,7 +32,6 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import ee.movara.app.ui.theme.MovaraGold
 import ee.movara.app.ui.theme.MovaraSurface
-import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.ui.res.painterResource
 import ee.movara.app.ui.theme.MovaraTextSecondary
@@ -49,17 +49,57 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.navigation.toRoute
 import ee.movara.app.ui.home.HomeScreen
 import ee.movara.app.ui.home.HomeViewModel
+import ee.movara.app.ui.preferences.MoviePreferenceQuizScreen
+import ee.movara.app.ui.preferences.MoviePreferenceQuizViewModel
+import ee.movara.app.ui.preferences.PreferenceStartupScreen
+import ee.movara.app.ui.preferences.PreferenceStartupState
+import ee.movara.app.ui.preferences.PreferenceStartupViewModel
 import ee.movara.app.ui.search.SearchScreen
 import ee.movara.app.ui.search.SearchViewModel
 import ee.movara.app.ui.selectedgenre.SelectedGenreScreen
 import ee.movara.app.ui.selectedgenre.SelectedGenreViewModel
 import ee.movara.app.ui.selectedgenre.SelectedGenreViewModelFactory
+import ee.movara.app.ui.moviedetails.MovieDetailsRouteContent
+import ee.movara.app.ui.moviedetails.MovieDetailsViewModel
+
 
 // Main navigation structure of application.
 // Defines the three primary destinations: Home, Genres and My Movies.
 // Also provides navigation to secondary screens such as Search, Selected Genre, Movie Details and About.
 @Composable
 fun MainNavigation(container: AppContainer) {
+  val startup = viewModel { PreferenceStartupViewModel(container.movieTasteRepository) }
+  val startupState by startup.uiState.collectAsStateWithLifecycle()
+  when (startupState) {
+    PreferenceStartupState.LOADING, PreferenceStartupState.ERROR -> PreferenceStartupScreen(
+      loading = startupState == PreferenceStartupState.LOADING,
+      onRetry = startup::retry,
+      onContinue = startup::enterApp
+    )
+    PreferenceStartupState.QUIZ -> {
+      val quiz: MoviePreferenceQuizViewModel = viewModel(
+        key = "firstLaunchQuiz",
+        factory = viewModelFactory {
+          initializer {
+            MoviePreferenceQuizViewModel(
+              container.movieTasteRepository, container.movieRepository, createSavedStateHandle()
+            )
+          }
+        }
+      )
+      MoviePreferenceQuizScreen(
+        viewModel = quiz,
+        isEditing = false,
+        onFinished = startup::enterApp,
+        onCancel = startup::enterApp
+      )
+    }
+    PreferenceStartupState.READY -> AppNavigation(container)
+  }
+}
+
+@Composable
+private fun AppNavigation(container: AppContainer) {
   val navController = rememberNavController()
   val currentDestination =
     navController.currentBackStackEntryAsState().value?.destination
@@ -67,7 +107,12 @@ fun MainNavigation(container: AppContainer) {
 //Shared layout and bottom navigation bar
   Scaffold(
     bottomBar = {
-      if (currentDestination?.hasRoute<AboutRoute>() != true) {
+      val hideBottomBar =
+        currentDestination?.hasRoute<AboutRoute>() == true ||
+          currentDestination?.hasRoute<MovieDetailsRoute>() == true ||
+          currentDestination?.hasRoute<MoviePreferencesRoute>() == true
+
+      if (!hideBottomBar) {
         NavigationBar(
 
         modifier = Modifier.height(80.dp),
@@ -79,7 +124,9 @@ fun MainNavigation(container: AppContainer) {
             outlinedIcon = R.drawable.ic_nav_home_outline,
             filledIcon = R.drawable.ic_nav_home_filled,
             selected = currentDestination?.hasRoute<HomeRoute>() == true,
-            onClick = { navController.openTab(HomeRoute) }
+            onClick = {
+              navController.openTab(HomeRoute)
+            }
           )
 
           MainTabItem(
@@ -105,7 +152,7 @@ fun MainNavigation(container: AppContainer) {
     NavHost(
       navController = navController,
       startDestination = HomeRoute,
-      modifier = Modifier.padding(padding)
+      modifier = Modifier.padding(padding).consumeWindowInsets(padding)
     ) {
 
       composable<HomeRoute> {
@@ -113,7 +160,8 @@ fun MainNavigation(container: AppContainer) {
         HomeScreen(
           viewModel = homeViewModel,
           onSearch = { navController.navigate(SearchRoute) },
-          onMovieClick = { movieId -> navController.navigate(MovieDetailsRoute(movieId)) }
+          onMovieClick = { movieId -> navController.navigate(MovieDetailsRoute(movieId)) },
+          onEditPreferences = { navController.navigate(MoviePreferencesRoute) }
         )
       }
 
@@ -214,20 +262,44 @@ fun MainNavigation(container: AppContainer) {
       }
 
 
-      composable<MovieDetailsRoute> {
-        Column(
-          modifier = Modifier.fillMaxSize(),
-          horizontalAlignment = Alignment.CenterHorizontally,
-          verticalArrangement = Arrangement.Center
-        ) {
-          Text("Movie Details", fontSize = 26.sp)
 
-          Button(
-            onClick = { navController.popBackStack() }
-          ) {
-            Text("Back")
-          }
+      composable<MovieDetailsRoute> { backStackEntry ->
+        val route = backStackEntry.toRoute<MovieDetailsRoute>()
+
+        val movieDetailsViewModel: MovieDetailsViewModel = viewModel(
+          viewModelStoreOwner = backStackEntry
+        ) {
+          MovieDetailsViewModel(
+            movieId = route.movieId,
+            repository = container.movieRepository
+          )
         }
+
+        MovieDetailsRouteContent(
+          viewModel = movieDetailsViewModel,
+          onBack = {
+            navController.popBackStack()
+          }
+        )
+      }
+
+
+      composable<MoviePreferencesRoute> {
+        val quiz: MoviePreferenceQuizViewModel = viewModel(
+          factory = viewModelFactory {
+            initializer {
+              MoviePreferenceQuizViewModel(
+                container.movieTasteRepository, container.movieRepository, createSavedStateHandle()
+              )
+            }
+          }
+        )
+        MoviePreferenceQuizScreen(
+          viewModel = quiz,
+          isEditing = true,
+          onFinished = { navController.popBackStack() },
+          onCancel = { navController.popBackStack() }
+        )
       }
 
 
