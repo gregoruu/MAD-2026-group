@@ -286,6 +286,107 @@ class DefaultMovieRepositoryTest {
     expectCancellation { repository.removeMovie(603, MovieListType.LIKED) }
   }
 
+  @Test
+  fun homeReusesPersistentFreshPagesAndOnlyFetchesANewLike() = runTest {
+    var clock = 1000L
+    val repository = DefaultMovieRepository(api, cache, saved, StandardTestDispatcher(testScheduler)) { clock }
+    val loader = HomeRecommendationLoader(repository)
+    val today = LocalDate.of(2026, 11, 9)
+    val preferences = ee.movara.app.domain.model.MovieTastePreferences(
+      genreIds = setOf(28, 35, 18, 27, 53),
+      favouriteMovieIds = (1001..1005).toSet()
+    )
+    val likes = (1..10).map { Movie(it, "Movie $it", null, 2020) }
+    loader.load(preferences, likes, today)
+    assertEquals(21, api.calls)
+
+    clock += 1000
+    val changed = loader.load(preferences, listOf(Movie(99, "New like", null, 2020)) + likes, today)
+    assertEquals(22, api.calls)
+    assertFalse(changed.usingCache) // Recent reuse is not labelled as stale offline fallback.
+
+    val reopened = DefaultMovieRepository(api, cache, saved, StandardTestDispatcher(testScheduler)) { clock }
+    HomeRecommendationLoader(reopened).load(preferences, likes, today)
+    assertEquals(22, api.calls)
+    loader.load(preferences, likes, today, forceRefresh = true)
+    assertEquals(43, api.calls)
+  }
+
+  @Test
+  fun freshCacheExpiresAfterSixHoursAndNeverExtendsItsOwnTimestamp() = runTest {
+    var clock = 1000L
+    val repository = DefaultMovieRepository(api, cache, saved, StandardTestDispatcher(testScheduler)) { clock }
+    repository.recommendedMovies(603, policy = MovieRequestPolicy.PREFER_FRESH_CACHE)
+    clock += MovieRequestPolicy.FRESH_CACHE_MILLIS - 1
+    val cached = repository.recommendedMovies(603, policy = MovieRequestPolicy.PREFER_FRESH_CACHE)
+      as RepositoryResult.Success
+    assertEquals(1, api.calls)
+    assertEquals(DataSource.CACHE, cached.source)
+    assertTrue(cached.freshCacheHit)
+    assertEquals(1000L, cached.fetchedAt)
+
+    clock += 1
+    val renewed = repository.recommendedMovies(603, policy = MovieRequestPolicy.PREFER_FRESH_CACHE)
+      as RepositoryResult.Success
+    assertEquals(2, api.calls)
+    assertEquals(DataSource.NETWORK, renewed.source)
+    assertEquals(clock, renewed.fetchedAt)
+    assertFalse(renewed.freshCacheHit)
+  }
+
+  @Test
+  fun policyReadsKeepGenresPagesAndRatingFiltersSeparate() = runTest {
+    val repository = DefaultMovieRepository(api, cache, saved, StandardTestDispatcher(testScheduler)) { 1000L }
+    val options = MovieDiscovery.familiar(28, LocalDate.of(2026, 11, 9))
+    repository.discoverMovies(options, policy = MovieRequestPolicy.PREFER_FRESH_CACHE)
+    repository.discoverMovies(options, policy = MovieRequestPolicy.PREFER_FRESH_CACHE)
+    assertEquals(1, api.calls)
+    repository.discoverMovies(options.copy(genreId = 35), policy = MovieRequestPolicy.PREFER_FRESH_CACHE)
+    repository.discoverMovies(options.copy(minimumRating = 8), policy = MovieRequestPolicy.PREFER_FRESH_CACHE)
+    repository.discoverMovies(options, 2, policy = MovieRequestPolicy.PREFER_FRESH_CACHE)
+    assertEquals(4, api.calls)
+  }
+
+  @Test
+  fun expiredCacheRemainsAvailableOfflineAndNetworkFirstStillAttemptsTheNetwork() = runTest {
+    var clock = 1000L
+    val repository = DefaultMovieRepository(api, cache, saved, StandardTestDispatcher(testScheduler)) { clock }
+    repository.trendingMovies(policy = MovieRequestPolicy.PREFER_FRESH_CACHE)
+    api.failure = IOException()
+    val forced = repository.trendingMovies(policy = MovieRequestPolicy.NETWORK_FIRST)
+      as RepositoryResult.Success
+    assertFalse(forced.freshCacheHit)
+    assertEquals(2, api.calls)
+    clock += MovieRequestPolicy.FRESH_CACHE_MILLIS
+    val fallback = repository.trendingMovies(policy = MovieRequestPolicy.PREFER_FRESH_CACHE)
+      as RepositoryResult.Success
+    assertEquals(DataSource.CACHE, fallback.source)
+    assertFalse(fallback.freshCacheHit)
+    assertEquals(1000L, fallback.fetchedAt)
+    assertEquals(3, api.calls)
+  }
+
+  @Test
+  fun corruptFutureDatedOrUnreadableFreshCacheDoesNotBlockNetworkAndCancellationPropagates() = runTest {
+    val repository = DefaultMovieRepository(api, cache, saved, StandardTestDispatcher(testScheduler)) { 1000L }
+    repository.trendingMovies()
+    cache.entries["trending:1"] = cache.entries.getValue("trending:1").copy(fetchedAt = 1001L)
+    assertEquals(DataSource.NETWORK,
+      (repository.trendingMovies(policy = MovieRequestPolicy.PREFER_FRESH_CACHE) as RepositoryResult.Success).source)
+    cache.entries["trending:1"] = TmdbCacheEntity("trending:1", "{broken", 1000L)
+    assertEquals(DataSource.NETWORK,
+      (repository.trendingMovies(policy = MovieRequestPolicy.PREFER_FRESH_CACHE) as RepositoryResult.Success).source)
+    cache.failure = IllegalStateException("Read unavailable")
+    val result = repository.trendingMovies(policy = MovieRequestPolicy.PREFER_FRESH_CACHE)
+      as RepositoryResult.Success
+    assertEquals(DataSource.NETWORK, result.source)
+    assertEquals(false, result.cachePersisted)
+    val callsBefore = api.calls
+    cache.failure = CancellationException()
+    expectCancellation { repository.trendingMovies(policy = MovieRequestPolicy.PREFER_FRESH_CACHE) }
+    assertEquals(callsBefore, api.calls)
+  }
+
   private suspend fun expectCancellation(block: suspend () -> Any?) {
     try {
       block()

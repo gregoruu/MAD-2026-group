@@ -54,8 +54,9 @@ ViewModels and screens do not see Retrofit types, Room entities or network excep
 
 `RepositoryResult` represents success or a safe categorized error. Success identifies
 network, cache or local-list data; TMDB results include the last successful fetch time.
-The repository makes one network attempt and persists validated DTO responses before
-returning fresh data. A cache write failure keeps the fresh result usable and reports
+By default the repository makes one network attempt and persists validated DTO responses
+before returning fresh data. Home opts into validated cache reuse for up to six hours
+through `MovieRequestPolicy.PREFER_FRESH_CACHE`; these hits make no network attempt. A cache write failure keeps the fresh result usable and reports
 `cachePersisted = false`. Recoverable failures load the matching Room cache entry;
 cached results may be stale. Cancellation propagates normally.
 
@@ -82,8 +83,9 @@ and provide a movie count for each list.
 The separate `tmdb_cache` table stores a request key, serialized TMDB DTO and successful
 fetch timestamp. Keys distinguish endpoints, normalized queries, movie/genre IDs and
 individual pages, including movie details. Failed requests do not replace successful
-entries; fallback reads and validates the persisted response. There is no expiry or
-automatic retry. This response cache never changes a user's saved-list memberships.
+entries; fallback reads and validates the persisted response. Entries are retained for
+offline fallback even after Home's six-hour freshness window expires. There is no eviction
+or automatic retry. This response cache never changes a user's saved-list memberships.
 
 Database schemas are exported to `frontend/app/schemas` and committed
 to version control.
@@ -143,11 +145,17 @@ users can also continue for the current session without saving.
 ## Personalized Home recommendations
 
 Home observes the persisted taste profile and the complete Like/Watched lists.
-`HomeRecommendationLoader` requests the first recommendation page for up to five
-most recent Likes and five quiz favourites (stable ID order); overlapping seed IDs
-are requested only once. It also requests popular movies for each preferred genre,
+`HomeRecommendationLoader` requests the first recommendation page for up to ten
+Likes and five quiz favourites (stable ID order); overlapping seed IDs are requested
+only once. `RecommendationSeeds.selectLikes` always includes the five most recent Likes.
+For at most ten Likes, every Like is used. Larger histories also contribute five older
+Likes from ID-sorted, consecutive windows that rotate with the UTC date. The selection
+is stable for an unchanged history and date, covers the older history over successive
+days, and is recalculated on the next Home load; there is no midnight background job. It also requests popular movies for each preferred genre,
 using `MovieDiscovery.familiar` with popularity sorting and the user's minimum rating,
-plus one weekly-trending page for discovery. At most three requests run concurrently.
+plus one weekly-trending page for discovery. At most 21 source pages are needed for
+a cold load: ten Likes, five quiz favourites, five genres and one trending page.
+At most three requests run concurrently.
 All selected favourites and all Likes remain excluded, including those beyond the
 seed request limit. Missing favourite titles do not require extra detail requests.
 
@@ -177,10 +185,17 @@ sources. Watched changes immediately refilter/rerank fetched candidates without
 network requests; removing a Watched entry can restore a candidate. Watch Later
 changes update action membership without changing recommendations.
 
-Existing MovieRepository response caches are reused and cached results are labelled.
+Home reuses validated persistent MovieRepository responses younger than six hours,
+without extending their fetch timestamp. New Likes fetch only source pages that are
+missing or no longer fresh; unchanged sources reuse their cached pages. Genre/rating/date
+filters remain part of each cache key. Corrupt, unreadable or future-dated cache entries
+do not prevent a network attempt. A `freshCacheHit` is normal reuse and does not show
+the stale/offline notice. Error-fallback cached results remain labelled.
 Individual source failures keep successful results visible with retry feedback.
 A missing profile or unreadable Like/Watched list cannot silently bypass saved filters.
-Retry resubscribes to profile and Watched observations and reloads sources. Empty
+Retry resubscribes to profile and Watched observations and makes network-first
+source requests, bypassing fresh-cache reuse while retaining offline fallback.
+Subsequent automatic Like/profile changes prefer fresh cache again. Empty
 results explain an active minimum rating and leave **Your taste** accessible.
 Discovery cache keys still include the exact cutoff date: an offline session on a
 new date may lack genre-cache entries, while previously cached seed/trending results

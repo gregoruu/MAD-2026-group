@@ -7,6 +7,7 @@ import ee.movara.app.domain.model.MovieSort
 import ee.movara.app.domain.model.MovieTastePreferences
 import ee.movara.app.domain.recommendation.RecommendationBatch
 import ee.movara.app.domain.recommendation.RecommendationSource
+import ee.movara.app.domain.recommendation.RecommendationSeeds
 import java.time.LocalDate
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
@@ -26,11 +27,14 @@ class HomeRecommendationLoader(private val repository: MovieRepository) {
   suspend fun load(
     preferences: MovieTastePreferences,
     likedMovies: List<Movie>,
-    today: LocalDate
+    today: LocalDate,
+    forceRefresh: Boolean = false
   ): HomeRecommendationResult = coroutineScope {
     val seeds = linkedMapOf<Int, RecommendationSource.Seed>()
     // Room returns newest Likes first. Quiz favourites have no timestamp, so use stable ID order.
-    likedMovies.take(5).forEach { seeds[it.id] = RecommendationSource.Seed(it.id, it.title) }
+    RecommendationSeeds.selectLikes(likedMovies, today).forEach {
+      seeds[it.id] = RecommendationSource.Seed(it.id, it.title)
+    }
     preferences.favouriteMovieIds.sorted().take(5).forEach { id ->
       seeds.putIfAbsent(id, RecommendationSource.Seed(id, preferences.favouriteTitles[id]))
     }
@@ -41,7 +45,10 @@ class HomeRecommendationLoader(private val repository: MovieRepository) {
     val results = sources.map { source ->
       async {
         semaphore.withPermit {
-          source to fetch(source, preferences, today)
+          source to fetch(
+            source, preferences, today,
+            if (forceRefresh) MovieRequestPolicy.NETWORK_FIRST else MovieRequestPolicy.PREFER_FRESH_CACHE
+          )
         }
       }
     }.awaitAll()
@@ -51,7 +58,7 @@ class HomeRecommendationLoader(private val repository: MovieRepository) {
       },
       hasFailures = results.any { it.second is RepositoryResult.Error },
       usingCache = results.any { (_, result) ->
-        result is RepositoryResult.Success && result.source == DataSource.CACHE
+        result is RepositoryResult.Success && result.source == DataSource.CACHE && !result.freshCacheHit
       }
     )
   }
@@ -59,17 +66,19 @@ class HomeRecommendationLoader(private val repository: MovieRepository) {
   private suspend fun fetch(
     source: RecommendationSource,
     preferences: MovieTastePreferences,
-    today: LocalDate
+    today: LocalDate,
+    policy: MovieRequestPolicy
   ): RepositoryResult<MoviePage> = try {
     when (source) {
-      is RecommendationSource.Seed -> repository.recommendedMovies(source.movieId)
+      is RecommendationSource.Seed -> repository.recommendedMovies(source.movieId, policy = policy)
       is RecommendationSource.Genre -> repository.discoverMovies(
         MovieDiscovery.familiar(source.genreId, today).copy(
           sort = MovieSort.POPULARITY,
           minimumRating = preferences.minimumRating
-        )
+        ),
+        policy = policy
       )
-      RecommendationSource.Discovery -> repository.trendingMovies()
+      RecommendationSource.Discovery -> repository.trendingMovies(policy = policy)
     }
   } catch (cancelled: CancellationException) {
     throw cancelled

@@ -116,7 +116,15 @@ return an input error without calling TMDB.
 
 Successful results contain domain models, pagination metadata for lists, a source
 (`NETWORK` / `CACHE` / `LOCAL`) and, for TMDB data, the last successful fetch timestamp.
-Each request attempts TMDB once. Validated successful DTOs are serialized into Room's
+Requests are network-first by default and attempt TMDB once. Home calls the policy
+overloads of `recommendedMovies`, `discoverMovies` and `trendingMovies` with
+`PREFER_FRESH_CACHE`: a validated response younger than six hours is returned without
+a network request, with `source = CACHE` and `freshCacheHit = true`. Its original fetch
+timestamp is preserved. Explicit Home retry uses `NETWORK_FIRST`; later automatic
+loads prefer fresh cache again. Search, details, genre browsing and the quiz retain
+their existing network-first behaviour.
+
+Validated successful DTOs are serialized into Room's
 `tmdb_cache` table before returning fresh data. A storage write failure returns usable
 network data with `cachePersisted = false`.
 
@@ -125,7 +133,9 @@ the matching persistent cache entry. Valid cached data returns `Success(source =
 its timestamp remains unchanged, so the UI can identify stale content. Missing or corrupt
 cache data returns an error. Other HTTP failures, such as 401/403/404, remain errors.
 Failed requests do not overwrite successful entries. There is no automatic retry,
-expiry or eviction.
+eviction. Cache entries are retained beyond the six-hour freshness window for offline
+fallback. Error-fallback responses have `freshCacheHit = false` and can show the
+saved/stale-content notice; normal fresh-cache hits do not.
 
 Cache keys distinguish endpoint, query/IDs and page, for example `search:interstellar:1`,
 `trending:1`, `recommendations:603:1`, `genre:28:2` and `details:603`.

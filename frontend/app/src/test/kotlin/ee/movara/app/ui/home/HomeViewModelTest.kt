@@ -5,6 +5,7 @@ import ee.movara.app.data.local.MovieListType
 import ee.movara.app.data.repository.DataSource
 import ee.movara.app.data.repository.ErrorCategory
 import ee.movara.app.data.repository.MovieRepository
+import ee.movara.app.data.repository.MovieRequestPolicy
 import ee.movara.app.data.repository.MovieTasteRepository
 import ee.movara.app.data.repository.RepositoryResult
 import ee.movara.app.domain.model.*
@@ -83,11 +84,50 @@ class HomeViewModelTest {
     repository.requestDelay = 100
     val model = viewModel()
     advanceUntilIdle()
-    assertEquals((1..5).toList(), repository.recommendationCalls)
+    assertEquals((1..7).toList(), repository.recommendationCalls)
     assertEquals(5, repository.discoveryOptions.size)
     assertEquals(1, repository.trendingCalls)
     assertTrue(repository.maximumConcurrentRequests <= 3)
     assertTrue(model.ids().none { it in 1..10 })
+  }
+
+  @Test fun largeHistoryUsesTenLikesAndStaysWithinTwentyOneRequests() = runTest {
+    repository.liked.value = success((1..30).map(::movie))
+    taste.stored.value = MovieTasteProfile(MovieTastePreferences(
+      genreIds = setOf(28, 35, 18, 27, 53),
+      favouriteMovieIds = (1001..1005).toSet()
+    ))
+    repository.requestDelay = 100
+    viewModel()
+    advanceUntilIdle()
+    assertEquals(15, repository.recommendationCalls.size)
+    assertEquals(15, repository.recommendationCalls.toSet().size)
+    assertTrue(repository.recommendationCalls.containsAll((1..5).toList()))
+    assertEquals(5, repository.recommendationCalls.count { it in 6..30 })
+    assertEquals(5, repository.discoveryOptions.size)
+    assertEquals(1, repository.trendingCalls)
+    assertTrue(repository.maximumConcurrentRequests <= 3)
+  }
+
+  @Test fun automaticLoadsPreferFreshPagesAndOnlyExplicitRetryBypassesThem() = runTest {
+    val model = viewModel()
+    assertEquals(listOf(MovieRequestPolicy.PREFER_FRESH_CACHE), repository.requestPolicies)
+    repository.requestPolicies.clear()
+    model.retry()
+    assertEquals(listOf(MovieRequestPolicy.NETWORK_FIRST), repository.requestPolicies)
+    repository.requestPolicies.clear()
+    model.toggleLike(movie(200))
+    assertTrue(repository.requestPolicies.isNotEmpty())
+    assertTrue(repository.requestPolicies.all { it == MovieRequestPolicy.PREFER_FRESH_CACHE })
+  }
+
+  @Test fun freshCacheReuseDoesNotShowTheOfflineFallbackNotice() = runTest {
+    repository.trendingResult = RepositoryResult.Success(
+      page(movie(100)), DataSource.CACHE, freshCacheHit = true
+    )
+    val model = viewModel()
+    assertEquals(listOf(100), model.ids())
+    assertFalse(model.uiState.value.usingCache)
   }
 
   @Test fun genreAndRatingEditsRefreshQueriesAndTheMinimumIsNeverLowered() = runTest {
@@ -263,6 +303,24 @@ private class HomeRepository : MovieRepository {
   var ignoreCancellation = false
   var maximumConcurrentRequests = 0
   private var activeRequests = 0
+  val requestPolicies = mutableListOf<MovieRequestPolicy>()
+
+  override suspend fun trendingMovies(page: Int, policy: MovieRequestPolicy): RepositoryResult<MoviePage> {
+    requestPolicies += policy
+    return trendingMovies(page)
+  }
+  override suspend fun recommendedMovies(
+    movieId: Int, page: Int, policy: MovieRequestPolicy
+  ): RepositoryResult<MoviePage> {
+    requestPolicies += policy
+    return recommendedMovies(movieId, page)
+  }
+  override suspend fun discoverMovies(
+    options: MovieDiscovery, page: Int, policy: MovieRequestPolicy
+  ): RepositoryResult<MoviePage> {
+    requestPolicies += policy
+    return discoverMovies(options, page)
+  }
 
   private suspend fun delayed(result: RepositoryResult<MoviePage>): RepositoryResult<MoviePage> {
     activeRequests++

@@ -59,7 +59,8 @@ private data class HomeData(
 
 private data class HomeInput(
   val preferences: MovieTastePreferences?,
-  val likedMovies: List<Movie>?
+  val likedMovies: List<Movie>?,
+  val refreshVersion: Int
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -71,6 +72,7 @@ class HomeViewModel(
   private val state = MutableStateFlow(HomeData())
   private val loader = HomeRecommendationLoader(repository)
   private val refresh = MutableStateFlow(0)
+  private var completedRefresh = 0
   private val pendingActions = mutableSetOf<Pair<Int, MovieListType>>()
 
   // Keep all fetched candidates. Watched changes rerank immediately without extra HTTP requests.
@@ -102,7 +104,7 @@ class HomeViewModel(
       }
     }
     viewModelScope.launch {
-      refresh.flatMapLatest {
+      refresh.flatMapLatest { refreshVersion ->
         // Retry resubscribes after a failed DataStore read instead of substituting default preferences.
         val preferences = tasteRepository.profile.map<MovieTasteProfile, MovieTastePreferences?> {
           it.preferences
@@ -111,7 +113,7 @@ class HomeViewModel(
           emit(null)
         }
         combine(preferences, repository.observeLikedMovies()) { taste, liked ->
-          HomeInput(taste, (liked as? RepositoryResult.Success)?.data)
+          HomeInput(taste, (liked as? RepositoryResult.Success)?.data, refreshVersion)
         }.distinctUntilChanged()
       }.collectLatest { input ->
         val preferences = input.preferences
@@ -125,8 +127,11 @@ class HomeViewModel(
           loading = true, loadFailed = false, usingCache = false, batches = emptyList(),
           preferences = preferences, likedIds = likes.map(Movie::id).toSet(), today = date
         ) }
-        val result = loader.load(preferences, likes, date)
+        val result = loader.load(
+          preferences, likes, date, forceRefresh = input.refreshVersion != completedRefresh
+        )
         currentCoroutineContext().ensureActive()
+        completedRefresh = input.refreshVersion
         state.update { it.copy(
           loading = false, batches = result.batches,
           loadFailed = result.hasFailures, usingCache = result.usingCache

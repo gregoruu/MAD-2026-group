@@ -8,7 +8,9 @@ sealed interface RepositoryResult<out T> {
     /** Time of the successful TMDB fetch; null for user lists. CACHE data may be stale. */
     val fetchedAt: Long? = null,
     /** False means fresh data is usable but could not be persisted for offline use. */
-    val cachePersisted: Boolean? = null
+    val cachePersisted: Boolean? = null,
+    /** A validated, recent response reused before attempting the network, rather than an error fallback. */
+    val freshCacheHit: Boolean = false
   ) : RepositoryResult<T>
 
   data class Error(
