@@ -48,6 +48,7 @@ fun HomeScreen(
   viewModel: HomeViewModel,
   onSearch: () -> Unit,
   onMovieClick: (Int) -> Unit,
+  onEditPreferences: () -> Unit,
   modifier: Modifier = Modifier
 ) {
   val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -63,7 +64,8 @@ fun HomeScreen(
       onMovieClick = onMovieClick,
       onLike = viewModel::toggleLike,
       onWatchLater = viewModel::toggleWatchLater,
-      onRetry = viewModel::retry
+      onRetry = viewModel::retry,
+      onEditPreferences = onEditPreferences
     )
     SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter))
   }
@@ -77,7 +79,8 @@ internal fun HomeContent(
   onLike: (Movie) -> Unit,
   onWatchLater: (Movie) -> Unit,
   onRetry: () -> Unit,
-  modifier: Modifier = Modifier
+  modifier: Modifier = Modifier,
+  onEditPreferences: () -> Unit = {}
 ) {
   val configuration = LocalConfiguration.current
   BoxWithConstraints(modifier.fillMaxSize()) {
@@ -100,12 +103,17 @@ internal fun HomeContent(
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onBackground
           )
-          IconButton(onClick = onSearch, modifier = Modifier.size(48.dp)) {
-            Icon(
-              painterResource(R.drawable.ic_ui_search),
-              contentDescription = stringResource(R.string.home_search),
-              tint = MaterialTheme.colorScheme.primary
-            )
+          Row(verticalAlignment = Alignment.CenterVertically) {
+            TextButton(onClick = onEditPreferences) {
+              Text(stringResource(R.string.preferences_edit))
+            }
+            IconButton(onClick = onSearch, modifier = Modifier.size(48.dp)) {
+              Icon(
+                painterResource(R.drawable.ic_ui_search),
+                contentDescription = stringResource(R.string.home_search),
+                tint = MaterialTheme.colorScheme.primary
+              )
+            }
           }
         }
       }

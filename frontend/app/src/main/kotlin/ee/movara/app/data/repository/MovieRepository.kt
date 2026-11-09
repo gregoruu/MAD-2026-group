@@ -3,6 +3,7 @@ package ee.movara.app.data.repository
 import ee.movara.app.data.local.MovieListType
 import ee.movara.app.domain.model.Movie
 import ee.movara.app.domain.model.MovieDetails
+import ee.movara.app.domain.model.MovieDiscovery
 import ee.movara.app.domain.model.MoviePage
 import ee.movara.app.domain.model.MovieLists
 import kotlinx.coroutines.flow.Flow
@@ -14,6 +15,7 @@ interface MovieRepository {
   suspend fun recommendedMovies(movieId: Int, page: Int = 1): RepositoryResult<MoviePage>
   suspend fun moviesInGenre(genreId: Int, page: Int = 1): RepositoryResult<MoviePage>
   suspend fun movieDetails(movieId: Int): RepositoryResult<MovieDetails>
+  suspend fun discoverMovies(options: MovieDiscovery, page: Int = 1): RepositoryResult<MoviePage>
 
   fun observeMovies(listType: MovieListType): Flow<RepositoryResult<List<Movie>>>
   fun observeLists(): Flow<RepositoryResult<MovieLists>>

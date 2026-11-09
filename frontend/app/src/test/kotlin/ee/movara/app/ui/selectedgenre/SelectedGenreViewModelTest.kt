@@ -211,6 +211,11 @@ class SelectedGenreViewModelTest {
 }
 
 private class FakeMovieRepository : MovieRepository {
+  override suspend fun discoverMovies(
+    options: ee.movara.app.domain.model.MovieDiscovery,
+    page: Int
+  ): RepositoryResult<MoviePage> = error("Unused")
+
 
     val responses =
         mutableMapOf<Int, RepositoryResult<MoviePage>>()

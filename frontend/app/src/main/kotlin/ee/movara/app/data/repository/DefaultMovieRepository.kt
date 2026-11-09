@@ -13,6 +13,8 @@ import ee.movara.app.data.remote.toDomainMovies
 import ee.movara.app.data.remote.toDomainOrNull
 import ee.movara.app.domain.model.Movie
 import ee.movara.app.domain.model.MovieDetails
+import ee.movara.app.domain.model.MovieDiscovery
+import ee.movara.app.domain.model.MovieSort
 import ee.movara.app.domain.model.MoviePage
 import ee.movara.app.domain.model.MovieLists
 import java.io.IOException
@@ -59,6 +61,33 @@ class DefaultMovieRepository(
   override suspend fun moviesInGenre(genreId: Int, page: Int): RepositoryResult<MoviePage> {
     if (genreId <= 0 || page <= 0) return invalidInput()
     return moviePage("genre:$genreId:$page", page) { api.moviesInGenre(genreId, page) }
+  }
+
+  override suspend fun discoverMovies(
+    options: MovieDiscovery,
+    page: Int
+  ): RepositoryResult<MoviePage> {
+    if (page !in 1..500 || (options.genreId != null && options.genreId !in 1..999999999) ||
+      (options.minimumRating != null && options.minimumRating !in 0..10) ||
+      (options.minimumVotes != null && options.minimumVotes < 0) ||
+      (options.releasedBy != null && options.releasedBy.year !in 1000..9999)) {
+      return RepositoryResult.Error(ErrorCategory.INVALID_INPUT, "Invalid movie discovery filters.")
+    }
+    val sortBy = when (options.sort) {
+      MovieSort.POPULARITY -> "popularity.desc"
+      MovieSort.MOST_VOTED -> "vote_count.desc"
+      MovieSort.HIGHEST_RATED -> "vote_average.desc"
+    }
+    // Every option participates in the key, including the exact release cutoff date.
+    val key = "discover:${options.genreId ?: "all"}:$sortBy:" +
+      "${options.minimumRating ?: "any"}:${options.minimumVotes ?: "any"}:" +
+      "${options.releasedBy ?: "any"}:$page"
+    return moviePage(key, page) {
+      api.discoverMovies(
+        options.genreId, sortBy, options.minimumRating, options.minimumVotes,
+        options.releasedBy?.toString(), page
+      )
+    }
   }
 
   override suspend fun movieDetails(movieId: Int): RepositoryResult<MovieDetails> {

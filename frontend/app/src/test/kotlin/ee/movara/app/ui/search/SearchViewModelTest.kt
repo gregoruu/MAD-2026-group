@@ -179,6 +179,11 @@ private fun success(title: String, page: Int, totalPages: Int = 1) =
   )
 
 private class SearchRepository : MovieRepository {
+  override suspend fun discoverMovies(
+    options: ee.movara.app.domain.model.MovieDiscovery,
+    page: Int
+  ): RepositoryResult<MoviePage> = error("Unused")
+
   val requests = mutableListOf<Pair<String, Int>>()
   var respond: suspend (String, Int) -> RepositoryResult<MoviePage> =
     { title, page -> success(title, page) }

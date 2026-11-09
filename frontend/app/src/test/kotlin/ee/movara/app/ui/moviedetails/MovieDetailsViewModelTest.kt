@@ -12,6 +12,7 @@ import ee.movara.app.domain.model.Movie
 import ee.movara.app.domain.model.MovieLists
 import ee.movara.app.ui.movies.MovieListsViewModel
 import ee.movara.app.domain.model.MovieDetails
+import ee.movara.app.domain.model.MovieDiscovery
 import ee.movara.app.domain.model.MoviePage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
@@ -353,6 +354,11 @@ private class FakeDetailsRepository(
 
     override suspend fun moviesInGenre(
         genreId: Int,
+        page: Int
+    ): RepositoryResult<MoviePage> = unused()
+
+    override suspend fun discoverMovies(
+        options: MovieDiscovery,
         page: Int
     ): RepositoryResult<MoviePage> = unused()
 
