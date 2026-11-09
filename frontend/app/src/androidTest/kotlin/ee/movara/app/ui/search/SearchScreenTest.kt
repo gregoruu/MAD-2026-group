@@ -11,9 +11,14 @@ import androidx.compose.ui.test.performImeAction
 import ee.movara.app.domain.model.Movie
 import ee.movara.app.ui.theme.MovaraTheme
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
+import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.onNodeWithTag
 
 class SearchScreenTest {
@@ -94,6 +99,13 @@ class SearchScreenTest {
 
     compose.onNodeWithTag("empty_state_icon")
       .assertIsDisplayed()
+    compose.onNodeWithTag("search_empty_state")
+      .assert(
+        SemanticsMatcher.expectValue(
+          SemanticsProperties.LiveRegion,
+          LiveRegionMode.Polite
+        )
+      )
   }
 
   @Test fun clearButtonSendsEmptyQuery() {

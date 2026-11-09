@@ -105,6 +105,13 @@ fun GenresScreen(
     }
 
 }
+
+@Preview(
+    name = "Phone - 2 columns",
+    showBackground = true,
+    widthDp = 412,
+    heightDp = 917
+)
 @Composable
 private fun GenresPhonePreview() {
     MovaraTheme {

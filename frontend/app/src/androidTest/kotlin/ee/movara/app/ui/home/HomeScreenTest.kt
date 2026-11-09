@@ -92,4 +92,33 @@ class HomeScreenTest {
       .assertIsDisplayed()
   }
 
+
+  @Test
+  fun emptyRecommendationRailShowsMessageAndIcon() {
+    compose.setContent {
+      MovaraTheme {
+        HomeContent(
+          state = HomeUiState(
+            loading = false,
+            rails = listOf(
+              HomeRail(movies = emptyList())
+            )
+          ),
+          onSearch = {},
+          onMovieClick = {},
+          onLike = {},
+          onWatchLater = {},
+          onRetry = {}
+        )
+      }
+    }
+
+    compose.onNodeWithText(
+      "No recommendations available right now. Try again later."
+    ).performScrollTo().assertIsDisplayed()
+
+    compose.onNodeWithTag("empty_state_icon")
+      .assertExists()
+  }
+
 }
