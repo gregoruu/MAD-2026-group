@@ -252,6 +252,7 @@ private class ListsRepository : MovieRepository {
   override suspend fun saveMovie(movie: Movie, listType: MovieListType): RepositoryResult<Unit> { writes++; return writeResult }
   override suspend fun removeMovie(movieId: Int, listType: MovieListType): RepositoryResult<Unit> { writes++; return writeResult }
   private fun unused() = RepositoryResult.Error(ErrorCategory.UNEXPECTED, "Unavailable")
+  override suspend fun discoverMovies(options: MovieDiscovery, page: Int): RepositoryResult<MoviePage> = unused()
   override suspend fun searchMovies(title: String, page: Int): RepositoryResult<MoviePage> = unused()
   override suspend fun recommendedMovies(movieId: Int, page: Int): RepositoryResult<MoviePage> = unused()
   override suspend fun moviesInGenre(genreId: Int, page: Int): RepositoryResult<MoviePage> = unused()

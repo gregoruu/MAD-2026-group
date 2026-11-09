@@ -9,6 +9,7 @@ import ee.movara.app.data.repository.RepositoryResult
 import ee.movara.app.domain.model.Movie
 import ee.movara.app.domain.model.MovieDetails
 import ee.movara.app.domain.model.MovieDiscovery
+import ee.movara.app.domain.model.MovieLists
 import java.time.LocalDate
 import ee.movara.app.domain.model.MoviePage
 import ee.movara.app.domain.model.MovieTastePreferences
@@ -88,6 +89,8 @@ internal class QuizMovieRepository : MovieRepository {
   override suspend fun recommendedMovies(movieId: Int, page: Int): RepositoryResult<MoviePage> =
     error("Quiz must not request recommendations")
   override fun observeMovies(listType: MovieListType): Flow<RepositoryResult<List<Movie>>> =
+    error("Quiz must not access saved movie lists")
+  override fun observeLists(): Flow<RepositoryResult<MovieLists>> =
     error("Quiz must not access saved movie lists")
   override fun observeCount(listType: MovieListType): Flow<RepositoryResult<Int>> = error("Unused")
   override fun observeMembership(movieId: Int, listType: MovieListType): Flow<RepositoryResult<Boolean>> =
