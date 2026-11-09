@@ -16,3 +16,4 @@ import kotlinx.serialization.Serializable
 @Serializable data class SelectedGenreRoute(val genreId: Int)
 @Serializable data class MovieDetailsRoute(val movieId: Int)
 @Serializable data object AboutRoute
+@Serializable data object MoviePreferencesRoute

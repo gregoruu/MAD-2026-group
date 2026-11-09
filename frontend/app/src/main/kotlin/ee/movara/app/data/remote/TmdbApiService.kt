@@ -44,6 +44,17 @@ interface TmdbApiService {
     @Query("page") page: Int
   ): MoviePageDto
 
+  /** Configurable discovery shared by the quiz and Home; absent filters are omitted. */
+  @GET("discover/movie")
+  suspend fun discoverMovies(
+    @Query("with_genres") genreId: Int? = null,
+    @Query("sort_by") sortBy: String = "popularity.desc",
+    @Query("vote_average.gte") minimumRating: Int? = null,
+    @Query("vote_count.gte") minimumVotes: Int? = null,
+    @Query("primary_release_date.lte") releasedBy: String? = null,
+    @Query("page") page: Int = 1
+  ): MoviePageDto
+
   /**
    * One movie with its cast and crew in the same response, which arrives in
    * [MovieDetailsDto.credits].

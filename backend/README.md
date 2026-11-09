@@ -18,7 +18,7 @@ Only `GET` requests for the paths the app uses are forwarded to `https://api.the
 | `/search/movie` | `query`: not blank, at most 100 characters; `page` |
 | `/trending/movie/week` | `page` |
 | `/movie/{id}/recommendations` | `page` |
-| `/discover/movie` | `sort_by`: only `popularity.desc`; `with_genres`: one genre id; `page` |
+| `/discover/movie` | `sort_by`: `popularity.desc`, `vote_count.desc` or `vote_average.desc`; optional `with_genres`: one genre id; `vote_average.gte`: integer 0–10; `vote_count.gte`: integer 0–2147483647; `primary_release_date.lte`: valid `YYYY-MM-DD` date; `page` |
 | `/movie/{id}` | `append_to_response`: only `credits` |
 
 `page` is a whole number from 1 to 500. `{id}` and a genre id are whole numbers of 1 to 9 digits without a leading zero.

@@ -114,6 +114,24 @@ survive app restarts. The profile Flow exposes persisted data only. Read and wri
 failures propagate to the caller instead of silently resetting the user's preferences.
 Database and DataStore files are excluded from backup and device transfer.
 
+Before constructing the normal navigation graph, `PreferenceStartupViewModel` reads
+the stored profile. New installations see the three-step genre, favourite-film and
+minimum-rating quiz. Completed/skipped profiles go directly to Home. A storage-read
+failure offers retry or entry to Home for the current session without changing the
+stored status.
+
+`MoviePreferenceQuizViewModel` keeps draft answers, the current step and search query
+in `SavedStateHandle`; leaving an edit without saving does not change the profile.
+The movie picker uses shared `MovieDiscovery.familiar` options: most-voted first,
+minimum rating 6, at least 100 votes, and already released by the current UTC date.
+It interleaves selected genres' paginated results, or discovers across all genres
+when none are selected. There are no decade quotas or weighted scores. It also
+supports debounced title search (without the browsing quality floor) and retains
+selections across searches and pages. Home's **Your taste** action opens the same quiz
+with existing preferences. Saving errors retain the draft for retry; first-launch
+users can also continue for the current session without saving.
+Home ranking consumes these preferences under #40.
+
 ## Permissions and user accounts
 
 The app declares two Android platform permissions:
