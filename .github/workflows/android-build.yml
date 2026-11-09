@@ -1,0 +1,67 @@
+name: Android build
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  build:
+    # Keep this name stable: main's protection rule must require this check.
+    name: Android build check
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      # Cold PR caches can require large compiler downloads over a slow connection.
+      GRADLE_OPTS: >-
+        -Dorg.gradle.internal.http.connectionTimeout=120000
+        -Dorg.gradle.internal.http.socketTimeout=120000
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4
+        with:
+          packages: 'platforms;android-37.0 build-tools;36.0.0'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5
+
+      - name: Make the Gradle wrapper executable
+        run: chmod +x gradlew
+
+      - name: Build staging APK
+        run: ./gradlew assembleStaging --no-daemon --stacktrace --console=plain
+
+      - name: Run unit tests
+        run: ./gradlew test --no-daemon --stacktrace --console=plain
+
+      - name: Upload test reports
+        if: ${{ always() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: android-test-reports
+          path: |
+            frontend/app/build/reports/tests/
+            frontend/app/build/test-results/
+          if-no-files-found: ignore
+          retention-days: 7

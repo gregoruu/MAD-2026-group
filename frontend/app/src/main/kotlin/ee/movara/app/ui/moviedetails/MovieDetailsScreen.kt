@@ -18,9 +18,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import ee.movara.app.data.local.MovieListType
-import ee.movara.app.domain.model.Movie
-import ee.movara.app.ui.movies.MovieListsUiState
 import ee.movara.app.R
 import ee.movara.app.domain.model.Genre
 import ee.movara.app.domain.model.MovieDetails
@@ -111,7 +108,7 @@ fun MovieDetailsScreen(
                     onLikeClick = onLikeClick,
                     onWatchLaterClick = onWatchLaterClick,
                     onWatchedClick = onWatchedClick,
-                        actionsEnabled = actionsEnabled,
+                    actionsEnabled = actionsEnabled,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(
@@ -503,47 +500,5 @@ private fun MovieDetailsLongTitleMediumPreview() {
             onWatchedClick = {},
             onBack = {}
         )
-    }
-}
-
-@Composable
-fun MovieDetailsScreen(
-    state: MovieDetailsUiState,
-    lists: MovieListsUiState,
-    onMembershipChange: (Movie, MovieListType, Boolean) -> Unit,
-    onBack: () -> Unit,
-    onRetry: () -> Unit,
-    onRetryLists: () -> Unit
-) {
-    Column(Modifier.fillMaxSize()) {
-        if (state.isLoading) CircularProgressIndicator()
-        state.error?.let {
-            Text(it)
-            TextButton(onClick = onRetry) { Text("Retry movie") }
-        }
-        lists.storageError?.let {
-            Text(it)
-            TextButton(onClick = onRetryLists) { Text("Retry storage") }
-        }
-        val details = state.movie
-        if (details == null) {
-            TextButton(onClick = onBack) { Text("Back") }
-        } else {
-            val movie = Movie(details.id, details.title, details.posterPath, details.releaseYear)
-            val liked = lists.lists.contains(movie.id, MovieListType.LIKED)
-            val later = lists.lists.contains(movie.id, MovieListType.WATCH_LATER)
-            val watched = lists.lists.contains(movie.id, MovieListType.WATCHED)
-            MovieDetailsScreen(
-                movie = details,
-                isLiked = liked,
-                isWatchLater = later,
-                isWatched = watched,
-                onLikeClick = { onMembershipChange(movie, MovieListType.LIKED, !liked) },
-                onWatchLaterClick = { onMembershipChange(movie, MovieListType.WATCH_LATER, !later) },
-                onWatchedClick = { onMembershipChange(movie, MovieListType.WATCHED, !watched) },
-                onBack = onBack,
-                actionsEnabled = lists.actionsEnabled && movie.id !in lists.pendingIds
-            )
-        }
     }
 }

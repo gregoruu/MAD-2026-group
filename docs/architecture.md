@@ -64,9 +64,12 @@ data. Saving a watched membership also removes Watch Later inside one DAO transa
 liked membership remains independent. `observeLists()` reads all memberships in one
 query, providing a consistent snapshot to the navigation-scoped `MovieListsViewModel`.
 Home, My Movies and Movie Details share that state and write through the repository.
-Home removes watched IDs from trending candidates and reacts to local list changes
-without refetching TMDB. Personal recommendation selection (#40), the complete screen
-designs, connectivity UI (#43) and image caching (#48) remain separate features.
+Home retains its Spotlight card and recommendation rails, using recommendations for
+up to five recent likes and trending when there are no likes. Watched changes refilter
+all fetched rails without another TMDB request. Recommendations stay hidden until the
+saved-list snapshot loads successfully, including during retries and storage errors.
+Search retains its query submission, pagination and movie navigation. Connectivity UI
+(#43) and image caching (#48) remain separate features.
 
 The endpoints, the failure behaviour and the logging rules are in
 [docs/api-docs.md](api-docs.md).

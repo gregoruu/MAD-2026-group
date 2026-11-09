@@ -1,5 +1,7 @@
 # **App name: Movara**
 
+[![Android build](https://github.com/gregoruu/MAD-2026-group/actions/workflows/android-build.yml/badge.svg?branch=main&event=push)](https://github.com/gregoruu/MAD-2026-group/actions/workflows/android-build.yml)
+
 # **Team members: Marten Tiisler, Kristo Kontse, Gregor Uustalu, Sander Zirel, Anna Liisa Nurm**
 
 # **App idea**

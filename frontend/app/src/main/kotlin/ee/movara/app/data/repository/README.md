@@ -20,14 +20,15 @@ domain models and never use Retrofit or DAOs directly.
   Movie Details. Buttons stay disabled while loading, after storage errors and
   while a write for that movie is pending; failures never fake a changed selection.
   The observed Room snapshot confirms each successful write before re-enabling actions.
-- Home filters watched IDs and duplicate movies from its trending candidates and
-  recomputes on list changes without another network request. The same filtering
-  must be retained when personal recommendation selection (#40) replaces trending.
+- Home loads recommendation rails for up to five recent likes, with a trending
+  fallback when there are no likes. Each rail removes duplicates and watched IDs;
+  watched changes refilter fetched rails without another network request. While
+  saved lists are loading or unavailable, no unfiltered recommendations are shown.
   Raw TMDB endpoints and their cached responses are not filtered or rewritten.
 
-The navigation screens provide the list-action integration for #39. They are not
-the complete screen designs for #32, #36 and #37. Search and Genres remain separate
-features, and undo snackbars belong to #44. Unlike, remove Watch Later and unmark
+The navigation screens provide the list-action integration for #39 while retaining
+the Home, Search and Movie Details implementations from main. Undo snackbars belong
+to #44. Unlike, remove Watch Later and unmark
 Watched are supported directly by the toggled controls.
 
 `RepositoryResult.Success` carries `NETWORK`, `CACHE` or `LOCAL` source.

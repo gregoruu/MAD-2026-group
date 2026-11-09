@@ -7,7 +7,6 @@ import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -21,7 +20,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.padding
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
@@ -31,26 +29,31 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import ee.movara.app.ui.theme.MovaraGold
 import ee.movara.app.ui.theme.MovaraSurface
-import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.ui.res.painterResource
 import ee.movara.app.ui.theme.MovaraTextSecondary
 import androidx.compose.ui.graphics.Color
 import ee.movara.app.ui.about.AboutScreen
+import ee.movara.app.ui.genres.GenresScreen
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.navigation.toRoute
-import ee.movara.app.ui.home.HomeViewModel
-import ee.movara.app.ui.moviedetails.MovieDetailsViewModel
 import ee.movara.app.ui.movies.MovieListsViewModel
-import ee.movara.app.ui.movies.HomeMoviesScreen
 import ee.movara.app.ui.movies.SavedMoviesScreen
-import ee.movara.app.ui.moviedetails.MovieDetailsScreen
-import ee.movara.app.ui.genres.GenresScreen
+import ee.movara.app.ui.home.HomeScreen
+import ee.movara.app.ui.home.HomeViewModel
+import ee.movara.app.ui.search.SearchScreen
+import ee.movara.app.ui.search.SearchViewModel
 import ee.movara.app.ui.selectedgenre.SelectedGenreScreen
 import ee.movara.app.ui.selectedgenre.SelectedGenreViewModel
 import ee.movara.app.ui.selectedgenre.SelectedGenreViewModelFactory
+import ee.movara.app.ui.moviedetails.MovieDetailsRouteContent
+import ee.movara.app.ui.moviedetails.MovieDetailsViewModel
+
 
 // Main navigation structure of application.
 // Defines the three primary destinations: Home, Genres and My Movies.
@@ -66,7 +69,11 @@ fun MainNavigation(container: AppContainer) {
 //Shared layout and bottom navigation bar
   Scaffold(
     bottomBar = {
-      if (currentDestination?.hasRoute<AboutRoute>() != true) {
+      val hideBottomBar =
+        currentDestination?.hasRoute<AboutRoute>() == true ||
+                currentDestination?.hasRoute<MovieDetailsRoute>() == true
+
+      if (!hideBottomBar) {
         NavigationBar(
 
         modifier = Modifier.height(80.dp),
@@ -78,7 +85,9 @@ fun MainNavigation(container: AppContainer) {
             outlinedIcon = R.drawable.ic_nav_home_outline,
             filledIcon = R.drawable.ic_nav_home_filled,
             selected = currentDestination?.hasRoute<HomeRoute>() == true,
-            onClick = { navController.openTab(HomeRoute) }
+            onClick = {
+              navController.openTab(HomeRoute)
+            }
           )
 
           MainTabItem(
@@ -108,41 +117,32 @@ fun MainNavigation(container: AppContainer) {
     ) {
 
       composable<HomeRoute> {
-        val home: HomeViewModel = viewModel { HomeViewModel(container.movieRepository, movieLists.uiState) }
-        val state by home.uiState.collectAsStateWithLifecycle()
-        HomeMoviesScreen(
-          state = state,
-          lists = listsState,
-          onMembershipChange = movieLists::setMembership,
-          onOpenMovie = { navController.navigate(MovieDetailsRoute(it)) },
+        val homeViewModel = viewModel { HomeViewModel(container.movieRepository, movieLists) }
+        HomeScreen(
+          viewModel = homeViewModel,
           onSearch = { navController.navigate(SearchRoute) },
-          onRetry = {
-            if (listsState.storageError != null) {
-              movieLists.retry()
-            }
-            if (state.error != null) {
-              home.refresh()
-            }
-          }
+          onMovieClick = { movieId -> navController.navigate(MovieDetailsRoute(movieId)) }
         )
       }
 
       composable<SearchRoute> {
-        Column(
-          modifier = Modifier.fillMaxSize(),
-          horizontalAlignment = Alignment.CenterHorizontally,
-          verticalArrangement = Arrangement.Center
-        ) {
-          Text("Search", fontSize = 26.sp)
-
-          Button(
-            onClick = {
-              navController.popBackStack()
+        val searchViewModel: SearchViewModel = viewModel(
+          factory = viewModelFactory {
+            initializer {
+              SearchViewModel(container.movieRepository, createSavedStateHandle())
             }
-          ) {
-            Text("Back")
           }
-        }
+        )
+        val state by searchViewModel.uiState.collectAsStateWithLifecycle()
+        SearchScreen(
+          state = state,
+          onQueryChange = searchViewModel::onQueryChange,
+          onSearch = searchViewModel::submitSearch,
+          onLoadMore = searchViewModel::loadMore,
+          onRetry = searchViewModel::retry,
+          onMovieClick = { navController.navigate(MovieDetailsRoute(it)) },
+          onBack = { navController.popBackStack() }
+        )
       }
 
       composable<GenresRoute> {
@@ -164,7 +164,6 @@ fun MainNavigation(container: AppContainer) {
           onRetry = movieLists::retry
         )
       }
-
 
       composable<SelectedGenreRoute> { backStackEntry ->
         val route = backStackEntry.toRoute<SelectedGenreRoute>()
@@ -202,21 +201,29 @@ fun MainNavigation(container: AppContainer) {
         )
       }
 
-      composable<MovieDetailsRoute> { entry ->
-        val movieId = entry.toRoute<MovieDetailsRoute>().movieId
-        val details: MovieDetailsViewModel = viewModel {
-          MovieDetailsViewModel(container.movieRepository, movieId)
+
+
+      composable<MovieDetailsRoute> { backStackEntry ->
+        val route = backStackEntry.toRoute<MovieDetailsRoute>()
+
+        val movieDetailsViewModel: MovieDetailsViewModel = viewModel(
+          viewModelStoreOwner = backStackEntry
+        ) {
+          MovieDetailsViewModel(
+            movieId = route.movieId,
+            repository = container.movieRepository,
+            movieLists = movieLists
+          )
         }
-        val state by details.uiState.collectAsStateWithLifecycle()
-        MovieDetailsScreen(
-          state = state,
-          lists = listsState,
-          onMembershipChange = movieLists::setMembership,
-          onBack = { navController.popBackStack() },
-          onRetry = details::refresh,
-          onRetryLists = movieLists::retry
+
+        MovieDetailsRouteContent(
+          viewModel = movieDetailsViewModel,
+          onBack = {
+            navController.popBackStack()
+          }
         )
       }
+
 
 
       composable<AboutRoute> {
@@ -285,15 +292,4 @@ private fun RowScope.MainTabItem(
       unselectedTextColor = MovaraTextSecondary
     )
   )
-}
-
-
-@Composable
-private fun PlaceholderScreen(title: String) {
-  Box(
-    modifier = Modifier.fillMaxSize(),
-    contentAlignment = Alignment.Center
-  ) {
-    Text(text = title, fontSize = 26.sp)
-  }
 }
