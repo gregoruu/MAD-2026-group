@@ -155,6 +155,10 @@ days, and is recalculated on the next Home load; there is no midnight background
 using `MovieDiscovery.familiar` with popularity sorting and the user's minimum rating,
 plus one weekly-trending page for discovery. At most 21 source pages are needed for
 a cold load: ten Likes, five quiz favourites, five genres and one trending page.
+`MovieTastePreferences` enforces `MAX_GENRES = 5` on construction, including when
+DataStore reconstructs a saved profile. A persisted profile with more genres produces
+a read error before Home can load its sources; it is not silently truncated.
+The existing preference-validation and Home request-budget tests cover these limits.
 At most three requests run concurrently.
 All selected favourites and all Likes remain excluded, including those beyond the
 seed request limit. Missing favourite titles do not require extra detail requests.

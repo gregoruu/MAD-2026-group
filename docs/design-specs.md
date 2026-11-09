@@ -63,14 +63,14 @@ Two Google Fonts (SIL Open Font License): **Barlow Condensed** for titles (weigh
 
 ## 3. Spacing, shapes and sizes
 
-**Spacing scale (multiples of 4 dp):** 4, 8, 12, 16, 20, 24, 40 dp.
+**Spacing scale (multiples of 4 dp):** 4, 8, 12, 16, 20, 24, 32, 40 dp.
 
 | Use | Value |
 |---|---|
 | Screen margins | 20 dp on phones, 24 dp on larger screens |
 | Gap between movie cards | 12 dp (rails, genre tiles), 16 dp (movie grids) |
 | Gap between chips / action buttons | 8 dp / 12 dp |
-| Gap between sections on Home | 40 dp |
+| Gap between sections on Home | 32 dp |
 
 **Corner radius:** 8 dp (posters, tabs), 12 dp (cards, genre tiles, rows), 16 dp (search field), 24 dp (Spotlight), full (pills, round buttons).
 
@@ -162,7 +162,7 @@ Main target: **Compact (412 × 917 dp)**, phones in portrait. Also designed: **M
 
 ## 8. Interaction and animation notes
 
-- **Home:** tapping the Spotlight card, "See Details" or a movie in a rail opens Movie Details. The heart and bookmark buttons add the movie to Liked or Watch Later right away. The search button opens Search.
+- **Home:** tapping the Spotlight card, "See Details" or a movie in the recommendation row opens Movie Details. The heart and bookmark buttons add the movie to Liked or Watch Later right away. The search button opens Search. "Your taste" opens the preference quiz for editing. Saving preferences or changing Likes updates recommendations automatically; marking a film Watched removes it from Home.
 - **Search:** results appear while the user types, after a 400 ms pause. The clear button empties the field.
 - **Genres:** tapping a genre opens the movies of that genre. More movies load at the end of the list. "All Genres" or the Back button returns to the genre list.
 - **Movie Details:** Like, Watch Later and Mark Watched can be turned on and off. Marking a movie as watched also removes it from Watch Later. Back returns to the previous screen at the same scroll position.
@@ -176,13 +176,39 @@ Main target: **Compact (412 × 917 dp)**, phones in portrait. Also designed: **M
 
 ## 9. Data and content rules
 
-- **Home:** Top Pick and up to five rails "Because you liked [movie]", based on the movies the user has liked (TMDB recommendations). Watched movies are not shown. With no liked movies, Home shows "Trending this week".
+- **Home:** the highest-ranked eligible movie is Top Pick, followed by one combined horizontal recommendation row. The selection combines quiz favourites, Likes, preferred genres and trending movies. Watched movies, existing favourites/Likes and duplicates are excluded. The user’s minimum rating is always respected. See the Stage 3 design update below.
 - **Search:** TMDB search by title, 20 results at a time, each with poster, title and year.
 - **Genres:** the same 10 genres every time, each linked to a TMDB genre ID: Action 28, Drama 18, Sci-Fi 878, Thriller 53, Horror 27, Comedy 35, Romance 10749, Crime 80, Animation 16, Documentary 99.
 - **Selected genre:** the most popular movies of the genre, 20 at a time.
 - **Movie Details:** title, year, runtime, rating (one decimal, e.g. 7.6), genres, director, description and the first five actors. Missing description → "No description available". Missing runtime or cast → not shown.
 - **My Movies:** stored on the phone (Room), most recently added first, with the number of movies on each tab.
 - **Text length:** titles on cards and rows have at most two lines and end with "…". The full title is shown on Movie Details.
+
+### 9.1. Stage 3 Home design update (#40)
+
+Report 2 described separate "Because you liked [movie]" rails. Personalized Home
+now combines several recommendation sources and ranks films across them. One
+combined row presents that shared order, avoids repeating films under multiple
+source headings, and keeps a reason attached to each recommendation. This is the
+Stage 3 evolution of the Report 2 design.
+
+- **Spotlight:** Top Pick retains the existing card layout and actions. Its reason
+  appears above the card. Top Pick is not repeated in the row.
+- **Recommendation row:** up to 23 remaining films appear under "Picked for you",
+  or "More to discover" when all recommendations are discovery-only. Cards remain
+  144 × 208 dp with a 12 dp gap; each has a reason below it.
+- **Reasons:** use "Because you enjoyed [movie]", "Based on your favourite movies"
+  when a source title is unavailable, "Matches your interest in [genre]", or
+  "Trending this week". Reasons can describe quiz favourites as well as Likes.
+- **Limited results:** show only eligible films, even when fewer are available.
+  With no matches, explain an active minimum rating and keep "Your taste" accessible.
+- **Loading and failures:** retain pulsing placeholders, empty-result messages and
+  retry actions. Partial source failures keep usable recommendations visible.
+  Error-fallback cached content has a saved-content notice; normal fresh-cache reuse
+  does not need that notice.
+
+The ranking, request limits and refresh/cache behaviour are specified in
+[architecture.md](architecture.md#personalized-home-recommendations).
 
 ---
 
