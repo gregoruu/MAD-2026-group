@@ -133,8 +133,10 @@ The movie picker uses shared `MovieDiscovery.familiar` options: most-voted first
 minimum rating 6, at least 100 votes, and already released by the current UTC date.
 It interleaves selected genres' paginated results, or discovers across all genres
 when none are selected. There are no decade quotas or weighted scores. It also
-supports debounced title search (without the browsing quality floor) and retains
-selections across searches and pages. Home's **Your taste** action opens the same quiz
+supports debounced title search without the browsing quality floor; search accepts
+unknown release dates but excludes explicitly future-dated films. Selections persist
+across searches and pages. **Show more** remains available when filtering removes
+all displayed results but further pages exist. Home's **Your taste** action opens the same quiz
 with existing preferences. Saving errors retain the draft for retry; first-launch
 users can also continue for the current session without saving.
 Home ranking consumes these preferences under #40.

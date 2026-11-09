@@ -312,7 +312,8 @@ class MoviePreferenceQuizViewModel(
         val movies = (0 until (pages.maxOfOrNull { it.movies.size } ?: 0)).flatMap { index ->
           pages.mapNotNull { it.movies.getOrNull(index) }
         }.distinctBy(Movie::id).filter { movie ->
-          val released = movie.releaseDate?.let { !it.isAfter(releaseCutoff) } == true
+          // Search accepts missing dates, but still excludes explicitly future-dated films.
+          val released = movie.releaseDate?.let { !it.isAfter(releaseCutoff) } ?: query.isNotBlank()
           // Direct title search may find an enjoyed film below the browsing quality floor.
           released && (query.isNotBlank() ||
             ((movie.rating ?: 0.0) >= (familiarOptions.minimumRating ?: 0) &&

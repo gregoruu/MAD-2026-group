@@ -149,6 +149,28 @@ class MoviePreferenceQuizViewModelTest {
     assertFalse(model.uiState.value.canLoadMore)
   }
 
+  @Test fun fullyFilteredFirstPageStillAllowsLoadingValidMoviesFromTheNextPage() =
+    runTest(dispatcher) {
+      movies.respond = { _, page ->
+        quizPage(listOf(
+          if (page == 1) quizMovie(1).copy(releaseDate = null) else quizMovie(2)
+        ), page)
+      }
+      val model = model()
+      advanceUntilIdle()
+      model.next()
+      advanceUntilIdle()
+      assertTrue(model.uiState.value.movies.isEmpty())
+      assertTrue(model.uiState.value.canLoadMore)
+      assertFalse(model.uiState.value.movieLoadFailed)
+
+      model.loadMore()
+      advanceUntilIdle()
+      assertEquals(listOf("discover:all" to 1, "discover:all" to 2), movies.requests)
+      assertEquals(listOf(2), model.uiState.value.movies.map { it.id })
+      assertFalse(model.uiState.value.canLoadMore)
+    }
+
   @Test fun exhaustedGenreIsNotRequestedBeyondItsLastPage() = runTest(dispatcher) {
     movies.respond = { source, page ->
       quizPage(listOf(quizMovie(page)), page, if (source == "discover:28") 1 else 2)
@@ -300,7 +322,7 @@ class MoviePreferenceQuizViewModelTest {
     assertEquals(listOf(1, 7), model.uiState.value.movies.map { it.id })
   }
 
-  @Test fun titleSearchAllowsLowRatedFavouritesButExcludesUnreleasedFilms() = runTest(dispatcher) {
+  @Test fun titleSearchAllowsLowRatingsAndUnknownDatesButExcludesFutureFilms() = runTest(dispatcher) {
     val model = model()
     advanceUntilIdle()
     model.next()
@@ -308,12 +330,18 @@ class MoviePreferenceQuizViewModelTest {
     movies.respond = { _, page ->
       quizPage(listOf(
         quizMovie(1).copy(rating = 4.0, voteCount = 10),
-        quizMovie(2).copy(releaseDate = today.plusDays(1))
+        quizMovie(2).copy(releaseDate = today.plusDays(1)),
+        quizMovie(3).copy(releaseDate = null, rating = null, voteCount = 0),
+        quizMovie(4).copy(releaseDate = today)
       ), page)
     }
     model.onQueryChange("Favourite")
     advanceUntilIdle()
-    assertEquals(listOf(1), model.uiState.value.movies.map { it.id })
+    assertEquals(listOf(1, 3, 4), model.uiState.value.movies.map { it.id })
+    model.toggleMovie(model.uiState.value.movies.first { it.id == 3 })
+    model.finish()
+    advanceUntilIdle()
+    assertEquals(setOf(3), taste.stored.value.preferences.favouriteMovieIds)
   }
 
   @Test fun savedFavouriteTitlesAreAvailableInANewOfflineSessionWithoutDetailsRequests() =

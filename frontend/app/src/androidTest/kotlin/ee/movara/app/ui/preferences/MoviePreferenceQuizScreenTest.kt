@@ -93,6 +93,31 @@ class MoviePreferenceQuizScreenTest {
     compose.runOnIdle { assertEquals(listOf(550, 603), removed) }
   }
 
+  @Test fun emptyMoviePageStillOffersShowMoreUntilTheLastPage() {
+    val state = mutableStateOf(MoviePreferenceQuizState(
+      loadingProfile = false, step = QuizStep.MOVIES, page = 1, totalPages = 2
+    ))
+    var moreRequests = 0
+    compose.setContent {
+      MovaraTheme {
+        MoviePreferenceQuizContent(
+          state.value,
+          actions = QuizActions(more = {
+            moreRequests++
+            state.value = state.value.copy(page = 2)
+          })
+        )
+      }
+    }
+    val emptyMessage = "No movies found. Try another title or continue without choosing films."
+    compose.onNodeWithText(emptyMessage).assertDoesNotExist()
+    compose.onNodeWithText("Show more").assertIsDisplayed().assertIsEnabled().performClick()
+    compose.runOnIdle { assertEquals(1, moreRequests) }
+    compose.onNodeWithText("Show more").assertDoesNotExist()
+    compose.onNodeWithText(emptyMessage).assertIsDisplayed()
+    compose.onNodeWithText("Continue").assertIsEnabled()
+  }
+
   @Test fun networkErrorOffersRetryAndDoesNotDisableContinue() {
     var retried = false
     var continued = false

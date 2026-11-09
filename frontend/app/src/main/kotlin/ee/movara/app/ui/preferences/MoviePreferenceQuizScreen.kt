@@ -353,10 +353,10 @@ private fun FavouriteChoices(
       when {
         state.loadingMovies -> LoadingMessage(R.string.quiz_movies_loading)
         state.movieLoadFailed -> ErrorMessage(R.string.quiz_movies_error, actions.retryMovies)
-        state.movies.isEmpty() -> Text(stringResource(R.string.quiz_movies_empty))
         state.canLoadMore -> OutlinedButton(onClick = actions.more, enabled = enabled) {
           Text(stringResource(R.string.quiz_show_more))
         }
+        state.movies.isEmpty() -> Text(stringResource(R.string.quiz_movies_empty))
       }
     }
   }
