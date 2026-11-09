@@ -95,6 +95,25 @@ migration fallback is not used because the lists contain user data.
 AppContainer owns the database instance. Repositories access DAOs;
 screens and ViewModels do not access the database directly.
 
+## Movie taste preferences
+
+The first-launch quiz and Home recommendations share the `MovieTasteRepository`
+interface. `AppContainer` owns its `DataStoreMovieTasteRepository` implementation,
+backed by one application-scoped Preferences DataStore in
+`files/datastore/movie_taste.preferences_pb`.
+
+The profile stores up to five preferred genre IDs, favourite movie IDs, an optional
+minimum TMDB rating (6, 7 or 8), and an onboarding status: `NOT_STARTED`, `COMPLETED`
+or `SKIPPED`. Quiz favourites are separate from the Room Like, Watch Later and
+Watched lists; selecting one does not change any list membership.
+
+Draft answers belong to the quiz UI state. Saving atomically replaces all preferences
+and marks onboarding completed; later edits use the same operation. Skipping marks
+a new profile as skipped without overwriting a completed profile. Both operations
+survive app restarts. The profile Flow exposes persisted data only. Read and write
+failures propagate to the caller instead of silently resetting the user's preferences.
+Database and DataStore files are excluded from backup and device transfer.
+
 ## Permissions and user accounts
 
 The app declares two Android platform permissions:

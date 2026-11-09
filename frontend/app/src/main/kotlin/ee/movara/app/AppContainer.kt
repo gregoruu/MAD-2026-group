@@ -3,13 +3,16 @@ package ee.movara.app
 import android.content.Context
 import androidx.room.Room
 import ee.movara.app.data.local.MovaraDatabase
+import ee.movara.app.data.local.movieTasteDataStore
 import ee.movara.app.data.remote.TmdbApiService
 import ee.movara.app.data.remote.createTmdbApiService
 import ee.movara.app.data.remote.createTmdbOkHttpClient
 import ee.movara.app.data.repository.DataRepository
+import ee.movara.app.data.repository.DataStoreMovieTasteRepository
 import ee.movara.app.data.repository.DefaultDataRepository
 import ee.movara.app.data.repository.DefaultMovieRepository
 import ee.movara.app.data.repository.MovieRepository
+import ee.movara.app.data.repository.MovieTasteRepository
 import okhttp3.OkHttpClient
 
 /** Application-scoped dependencies. Screens receive repositories through their ViewModels. */
@@ -34,6 +37,10 @@ class AppContainer(private val context: Context) {
 
   val movieRepository: MovieRepository by lazy {
     DefaultMovieRepository(tmdbApiService, database.tmdbCacheDao(), database.savedMovieDao())
+  }
+
+  val movieTasteRepository: MovieTasteRepository by lazy {
+    DataStoreMovieTasteRepository(context.applicationContext.movieTasteDataStore)
   }
 
   val dataRepository: DataRepository by lazy { DefaultDataRepository() }
