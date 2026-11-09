@@ -2,11 +2,13 @@
 package ee.movara.app.ui.selectedgenre
 
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import ee.movara.app.domain.model.Movie
 import ee.movara.app.ui.theme.MovaraTheme
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -72,5 +74,51 @@ class SelectedGenreScreenTest {
         composeRule.runOnIdle {
             assertEquals(1, retryCount)
         }
+    }
+
+    @Test
+    fun initialLoadingShowsPosterShapedPlaceholders() {
+        composeRule.setContent {
+            MovaraTheme {
+                SelectedGenreScreen(
+                    genreId = 28,
+                    movies = emptyList(),
+                    isLoading = true,
+                    onBack = {},
+                    onMovieClick = {}
+                )
+            }
+        }
+
+        assertTrue(
+            composeRule
+                .onAllNodesWithTag("genre_loading_placeholder")
+                .fetchSemanticsNodes()
+                .isNotEmpty()
+        )
+    }
+
+    @Test
+    fun paginationLoadingShowsPlaceholdersWithoutSpinner() {
+        composeRule.setContent {
+            MovaraTheme {
+                SelectedGenreScreen(
+                    genreId = 28,
+                    movies = listOf(
+                        Movie(1, "Example", null, 2026)
+                    ),
+                    isLoadingMore = true,
+                    onBack = {},
+                    onMovieClick = {}
+                )
+            }
+        }
+
+        assertTrue(
+            composeRule
+                .onAllNodesWithTag("genre_loading_more_placeholder")
+                .fetchSemanticsNodes()
+                .isNotEmpty()
+        )
     }
 }

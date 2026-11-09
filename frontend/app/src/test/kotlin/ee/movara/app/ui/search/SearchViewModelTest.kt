@@ -26,6 +26,7 @@ import org.junit.After
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
+import ee.movara.app.ui.state.UiState
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class SearchViewModelTest {
@@ -168,6 +169,36 @@ class SearchViewModelTest {
     assertEquals("Alien", model.uiState.value.query)
     assertEquals(listOf("Alien" to 1), repository.requests)
   }
+
+  @Test
+  fun typingAndRestoringQueryShowsLoadingBeforeCoroutineRuns() =
+    runTest(dispatcher) {
+      val model = SearchViewModel(repository, savedState)
+
+      model.onQueryChange("Dune")
+
+      assertEquals(
+        UiState.Loading,
+        model.uiState.value.contentState
+      )
+      assertTrue(repository.requests.isEmpty())
+
+      model.onQueryChange("")
+
+      assertEquals(
+        UiState.Empty,
+        model.uiState.value.contentState
+      )
+
+      savedState["searchQuery"] = "Alien"
+
+      val restored = SearchViewModel(repository, savedState)
+
+      assertEquals(
+        UiState.Loading,
+        restored.uiState.value.contentState
+      )
+    }
 }
 
 private fun movie(id: Int, title: String = "Movie $id") = Movie(id, title, null, 2026)

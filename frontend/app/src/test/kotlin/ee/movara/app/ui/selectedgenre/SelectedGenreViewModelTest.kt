@@ -207,7 +207,7 @@ class SelectedGenreViewModelTest {
         assertNull(viewModel.uiState.value.loadMoreError)
         assertEquals(listOf(1, 2, 2), repository.requestedPages)
     }
-}
+    }
 
 private class FakeMovieRepository : MovieRepository {
 

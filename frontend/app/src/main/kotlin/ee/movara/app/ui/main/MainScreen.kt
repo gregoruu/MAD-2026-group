@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -22,30 +21,64 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ee.movara.app.R
 import ee.movara.app.ui.theme.MovaraTheme
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import ee.movara.app.ui.components.PulsingPlaceholder
+import ee.movara.app.ui.state.UiState
+
 
 @Composable
 fun MainScreen(
   viewModel: MainScreenViewModel,
-  modifier: Modifier = Modifier,
+  modifier: Modifier = Modifier
 ) {
   val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
   when (val state = uiState) {
-    MainScreenUiState.Loading -> {
+    UiState.Loading -> {
+      Column(
+        modifier = modifier
+          .fillMaxSize()
+          .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+      ) {
+        repeat(3) {
+          PulsingPlaceholder(
+            modifier = Modifier
+              .fillMaxWidth()
+              .height(48.dp)
+          )
+        }
+      }
+    }
+
+    is UiState.Success -> {
+      MainScreen(
+        data = state.data,
+        modifier = modifier
+      )
+    }
+
+    UiState.Empty -> {
       Box(
         modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
       ) {
-        CircularProgressIndicator()
+        Text("No data available")
       }
     }
-    is MainScreenUiState.Success -> {
-      MainScreen(data = state.data, modifier = modifier)
-    }
-    is MainScreenUiState.Error -> {
-      Text("Error loading data: ${state.throwable.message}")
+
+    is UiState.Error -> {
+      Box(
+        modifier = modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+      ) {
+        Text("Error loading data: ${state.message}")
+      }
     }
   }
 }
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

@@ -23,6 +23,9 @@ import ee.movara.app.ui.theme.*
 import kotlinx.coroutines.flow.first
 import ee.movara.app.domain.model.GenreCatalog
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.testTag
+import ee.movara.app.ui.state.UiState
+import ee.movara.app.ui.state.listUiState
 
 
 // displays movies belonging to the selected genre
@@ -90,9 +93,15 @@ fun SelectedGenreScreen(
                 )
             )
 
+            val contentState = listUiState(
+                items = movies,
+                loading = isLoading,
+                errorMessage = errorMessage
+            )
+
             when {
                 // Show placeholder movie cards initially
-                isLoading -> {
+                contentState == UiState.Loading -> {
                     LazyVerticalGrid(
                         columns = GridCells.Fixed(columns),
                         modifier = Modifier.fillMaxSize(),
@@ -109,7 +118,8 @@ fun SelectedGenreScreen(
                             PulsingPlaceholder(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .aspectRatio(144f / 208f),
+                                    .aspectRatio(144f / 208f)
+                                    .testTag("genre_loading_placeholder"),
                                 cornerRadius = 12.dp
                             )
                         }
@@ -117,7 +127,7 @@ fun SelectedGenreScreen(
                 }
 
                 // Initial loading error
-                errorMessage != null -> {
+                contentState is UiState.Error -> {
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
@@ -128,7 +138,7 @@ fun SelectedGenreScreen(
                             Arrangement.Center
                     ) {
                         Text(
-                            text = errorMessage,
+                            text = contentState.message,
                             color = MovaraText,
                             style =
                                 MaterialTheme.typography.bodyLarge
@@ -148,7 +158,7 @@ fun SelectedGenreScreen(
                 }
 
                 // No movies were returned
-                movies.isEmpty() -> {
+                contentState == UiState.Empty -> {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
@@ -263,26 +273,20 @@ fun SelectedGenreScreen(
                             }
                         }
 
-                        // next page
+
+// Show poster placeholders while loading the next page
                         if (isLoadingMore) {
-                            item(
-                                span = {
-                                    GridItemSpan(maxLineSpan)
-                                }
-                            ) {
-                                Box(
+                            items(columns) {
+                                PulsingPlaceholder(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(16.dp),
-                                    contentAlignment =
-                                        Alignment.Center
-                                ) {
-                                    CircularProgressIndicator(
-                                        color = MovaraGold
-                                    )
-                                }
+                                        .aspectRatio(144f / 208f)
+                                        .testTag("genre_loading_more_placeholder"),
+                                    cornerRadius = 12.dp
+                                )
                             }
                         }
+
                     }
                 }
             }
