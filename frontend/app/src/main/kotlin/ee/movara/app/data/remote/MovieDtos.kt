@@ -29,5 +29,8 @@ data class MovieSummaryDto(
   val id: Int? = null,
   val title: String? = null,
   @SerialName("poster_path") val posterPath: String? = null,
-  @SerialName("release_date") val releaseDate: String? = null
+  @SerialName("release_date") val releaseDate: String? = null,
+  @SerialName("genre_ids") val genreIds: List<Int> = emptyList(),
+  @SerialName("vote_average") val voteAverage: Double? = null,
+  @SerialName("vote_count") val voteCount: Int? = null
 )

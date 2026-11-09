@@ -277,6 +277,8 @@ dependencies {
   testImplementation(libs.junit)
   testImplementation(libs.kotlinx.coroutines.test)
   testImplementation(libs.okhttp.mockwebserver)
+  // Host-compatible file storage for DataStore persistence tests, including Windows.
+  testImplementation(libs.androidx.datastore.core.okio)
 
   // Instrumented tests: jUnit rules and runners
   androidTestImplementation(libs.androidx.test.core)
@@ -295,6 +297,7 @@ dependencies {
   implementation(libs.kotlinx.serialization.json)
 
   // Local storage
+  implementation(libs.androidx.datastore.preferences)
   implementation(libs.androidx.room.runtime)
   implementation(libs.androidx.room.ktx)
   ksp(libs.androidx.room.compiler)

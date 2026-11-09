@@ -1,10 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <data-extraction-rules>
-    <!-- Movie lists stay on this device, including during device migration. -->
+    <!-- Movie lists and taste preferences stay on this device, including during device migration. -->
     <cloud-backup>
         <exclude domain="database" path="." />
+        <exclude domain="file" path="datastore/" />
     </cloud-backup>
     <device-transfer>
         <exclude domain="database" path="." />
+        <exclude domain="file" path="datastore/" />
     </device-transfer>
 </data-extraction-rules>

@@ -114,6 +114,32 @@ class TmdbApiServiceTest {
   }
 
   @Test
+  fun discoverySendsEveryFilterAndCanOmitTheGenre() = runTest {
+    server.enqueue(MockResponse(code = 200, body = EMPTY_PAGE))
+    service.discoverMovies(
+      genreId = 28, sortBy = "vote_count.desc", minimumRating = 6,
+      minimumVotes = 100, releasedBy = "2026-11-09", page = 2
+    )
+    val filtered = server.takeRequest().url
+    assertEquals("/discover/movie", filtered.encodedPath)
+    assertEquals("28", filtered.queryParameter("with_genres"))
+    assertEquals("vote_count.desc", filtered.queryParameter("sort_by"))
+    assertEquals("6", filtered.queryParameter("vote_average.gte"))
+    assertEquals("100", filtered.queryParameter("vote_count.gte"))
+    assertEquals("2026-11-09", filtered.queryParameter("primary_release_date.lte"))
+    assertEquals("2", filtered.queryParameter("page"))
+
+    server.enqueue(MockResponse(code = 200, body = EMPTY_PAGE))
+    service.discoverMovies()
+    val unfiltered = server.takeRequest().url
+    assertEquals("popularity.desc", unfiltered.queryParameter("sort_by"))
+    assertNull(unfiltered.queryParameter("with_genres"))
+    assertNull(unfiltered.queryParameter("vote_average.gte"))
+    assertNull(unfiltered.queryParameter("vote_count.gte"))
+    assertNull(unfiltered.queryParameter("primary_release_date.lte"))
+  }
+
+  @Test
   fun movieDetails_asksForTheMovieWithItsCreditsAppended() = runTest {
     server.enqueue(MockResponse(code = 200, body = """{ "id": 550, "title": "Fight Club" }"""))
 
@@ -153,7 +179,7 @@ class TmdbApiServiceTest {
 
   @Test
   fun everyRequest_carriesNoApiKey() = runTest {
-    for (index in 1..4) {
+    for (index in 1..5) {
       server.enqueue(MockResponse(code = 200, body = EMPTY_PAGE))
     }
     server.enqueue(MockResponse(code = 200, body = """{ "id": 550, "title": "Fight Club" }"""))
@@ -162,10 +188,11 @@ class TmdbApiServiceTest {
     service.trendingMovies(page = 1)
     service.recommendedMovies(movieId = 550, page = 1)
     service.moviesInGenre(genreId = 28, page = 1)
+    service.discoverMovies(sortBy = "vote_count.desc")
     service.movieDetails(movieId = 550)
 
     val requests = mutableListOf<RecordedRequest>()
-    for (index in 1..5) {
+    for (index in 1..6) {
       requests.add(server.takeRequest())
     }
     for (request in requests) {
