@@ -8,6 +8,9 @@ import ee.movara.app.data.local.TmdbCacheEntity
 import ee.movara.app.data.remote.MoviePageDto
 import ee.movara.app.data.remote.MovieSummaryDto
 import ee.movara.app.domain.model.Movie
+import ee.movara.app.domain.model.MovieDiscovery
+import ee.movara.app.domain.model.MovieSort
+import java.time.LocalDate
 import java.io.IOException
 import java.net.SocketTimeoutException
 import kotlinx.coroutines.CancellationException
@@ -93,6 +96,78 @@ class DefaultMovieRepositoryTest {
     assertTrue(repository.searchMovies("Uncached") is RepositoryResult.Error)
     assertTrue(repository.moviesInGenre(99) is RepositoryResult.Error)
     assertTrue(repository.trendingMovies(2) is RepositoryResult.Error)
+  }
+
+  @Test
+  fun discoveryForwardsOptionsAndCachesMetadataForOfflineUse() = runTest {
+    val repository = DefaultMovieRepository(api, cache, saved, StandardTestDispatcher(testScheduler))
+    api.pageResponse = MoviePageDto(
+      results = listOf(MovieSummaryDto(
+        id = 603, title = "The Matrix", releaseDate = "1999-03-30",
+        genreIds = listOf(28, 878), voteAverage = 8.2, voteCount = 25000
+      )), totalPages = 2, totalResults = 40
+    )
+    val options = MovieDiscovery.familiar(28, LocalDate.of(2026, 11, 9))
+    val fresh = repository.discoverMovies(options, 2) as RepositoryResult.Success
+    assertEquals(
+      FakeTmdbApiService.DiscoveryCall(28, "vote_count.desc", 6, 100, "2026-11-09", 2),
+      api.lastDiscovery
+    )
+    val movie = fresh.data.movies.single()
+    assertEquals(setOf(28, 878), movie.genreIds)
+    assertEquals(8.2, movie.rating!!, 0.001)
+    assertEquals(25000, movie.voteCount)
+    assertEquals(LocalDate.of(1999, 3, 30), movie.releaseDate)
+    api.failure = IOException()
+    val offline = repository.discoverMovies(options, 2) as RepositoryResult.Success
+    assertEquals(DataSource.CACHE, offline.source)
+    assertEquals(fresh.data, offline.data)
+  }
+
+  @Test
+  fun discoveryCacheSeparatesEveryFilterAndPage() = runTest {
+    val repository = DefaultMovieRepository(api, cache, saved, StandardTestDispatcher(testScheduler))
+    val base = MovieDiscovery.familiar(28, LocalDate.of(2026, 11, 9))
+    val requests = listOf(
+      base to 1, base to 2, base.copy(genreId = null) to 1,
+      base.copy(sort = MovieSort.POPULARITY) to 1,
+      base.copy(sort = MovieSort.HIGHEST_RATED) to 1,
+      base.copy(minimumRating = 7) to 1,
+      base.copy(minimumVotes = 500) to 1,
+      base.copy(releasedBy = base.releasedBy!!.minusDays(1)) to 1,
+      MovieDiscovery() to 1
+    )
+    for ((options, page) in requests) {
+      assertTrue(repository.discoverMovies(options, page) is RepositoryResult.Success)
+    }
+    repository.moviesInGenre(28)
+    assertEquals(requests.size + 1, cache.entries.size)
+    api.failure = IOException()
+    for ((options, page) in requests) {
+      val cached = repository.discoverMovies(options, page) as RepositoryResult.Success
+      assertEquals(DataSource.CACHE, cached.source)
+    }
+    assertTrue(repository.discoverMovies(base.copy(minimumRating = 8)) is RepositoryResult.Error)
+  }
+
+  @Test
+  fun invalidDiscoveryFiltersNeverCallTheApi() = runTest {
+    val repository = DefaultMovieRepository(api, cache, saved, StandardTestDispatcher(testScheduler))
+    val invalid = listOf(
+      MovieDiscovery() to 0, MovieDiscovery() to 501,
+      MovieDiscovery(genreId = 0) to 1,
+      MovieDiscovery(genreId = 1000000000) to 1,
+      MovieDiscovery(minimumRating = -1) to 1,
+      MovieDiscovery(minimumRating = 11) to 1,
+      MovieDiscovery(minimumVotes = -1) to 1,
+      MovieDiscovery(releasedBy = LocalDate.of(999, 1, 1)) to 1
+    )
+    for ((options, page) in invalid) {
+      val result = repository.discoverMovies(options, page) as RepositoryResult.Error
+      assertEquals(ErrorCategory.INVALID_INPUT, result.category)
+    }
+    assertEquals(0, api.calls)
+    assertTrue(cache.entries.isEmpty())
   }
 
   @Test

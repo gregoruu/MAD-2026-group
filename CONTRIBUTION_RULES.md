@@ -16,8 +16,22 @@
 The [Android build workflow](.github/workflows/android-build.yml) runs on every pull
 request targeting `main`, on pushes to `main`, and when started manually from Actions.
 There are no path filters: documentation-only pull requests also receive the required check.
-It uses Ubuntu 24.04, JDK 17, Android SDK Platform 37.0 and Build-Tools 36.0.0, and runs
-these commands from the repository root:
+It uses Ubuntu 24.04, Node.js 22, JDK 17, Android SDK Platform 37.0 and Build-Tools 36.0.0.
+Before the Android build, it installs the proxy's locked dependencies and runs
+these commands in `backend/`:
+
+```sh
+npm ci
+npm test
+npm run typecheck
+```
+
+The proxy tests mock upstream requests and need no TMDB key. npm's download cache
+is keyed by `backend/package-lock.json`; `node_modules` is installed fresh.
+These steps belong to the existing **Android build check** job, so the same required
+status check also covers proxy test and type-check failures.
+
+It then runs these commands from the repository root:
 
 ```sh
 ./gradlew assembleStaging --no-daemon --stacktrace --console=plain

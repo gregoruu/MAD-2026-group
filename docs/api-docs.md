@@ -30,9 +30,11 @@ Network access requires the `INTERNET` permission, declared in `AndroidManifest.
 ## The proxy
 
 The proxy forwards only the five endpoints below, each with only the query parameters and
-values the app sends: `query` is not blank and at most 100 characters, `page` is 1 to 500,
-`sort_by` is only `popularity.desc`, `with_genres` is one genre id and `append_to_response`
-is only `credits`. Any other request is rejected before it reaches TMDB. The full rules,
+values the app sends: `query` is not blank and at most 100 characters; `page` is 1 to 500.
+Discover accepts `sort_by` values `popularity.desc`, `vote_count.desc` and
+`vote_average.desc`, an optional single `with_genres` ID, integer `vote_average.gte`
+(0–10), integer `vote_count.gte` (0–2147483647), and a valid ISO date in
+`primary_release_date.lte`. `append_to_response` is only `credits`. Any other request is rejected before it reaches TMDB. The full rules,
 deployment and secret handling are in `backend/README.md`.
 
 A new endpoint, parameter or value therefore needs two changes: the function on
@@ -52,6 +54,7 @@ many pages exist.
 | `recommendedMovies(movieId, page)` | `GET movie/{id}/recommendations?page=` | Home rails "Because you liked …" |
 | `moviesInGenre(genreId, page)` | `GET discover/movie?with_genres=&sort_by=popularity.desc&page=` | A selected genre |
 | `movieDetails(movieId)` | `GET movie/{id}?append_to_response=credits` | Movie Details |
+| `discoverMovies(options, page)` | `GET discover/movie` with optional genre, sort, rating, vote-count and release-date filters | Quiz and shared discovery for Home |
 
 `search/movie`, `trending/movie/week`, `recommendations` and `discover/movie` all answer
 with the same shape and are parsed into `MoviePageDto`.
@@ -61,6 +64,23 @@ screen costs one request. The cast and crew arrive in `MovieDetailsDto.credits`.
 
 The ten genres on the Genres screen are fixed in the app (see section 9 of
 `design-specs.md`), so there is no request for the genre list.
+
+The quiz uses `MovieDiscovery.familiar`: `vote_count.desc`, minimum rating 6,
+at least 100 votes, and a primary release date no later than the current UTC date.
+The same date is retained while paging through one quiz session. With no chosen
+genres, the quiz uses these filters without `with_genres`; it does not use trending.
+Selected genres are requested separately and interleaved. Title search keeps its
+relevance order and allows lower-rated favourites, but the quiz excludes future or
+unknown release dates from search results too.
+
+`Movie` carries optional genre IDs, rating, vote count and a parsed release date
+from list responses, making the metadata available to #40 without per-card details
+requests. Sparse saved-list rows may not have this metadata. Discovery cache keys
+include every filter, sort order, cutoff date and page, and never reuse the plain
+genre or trending cache for a filtered request.
+
+Deploy the updated proxy before testing this app against staging; the older Worker
+rejects the new parameters with HTTP 400.
 
 Images are not fetched through this service. Posters are `https://image.tmdb.org/t/p/{size}{path}`
 and are loaded by the image loader from the paths in the responses.
