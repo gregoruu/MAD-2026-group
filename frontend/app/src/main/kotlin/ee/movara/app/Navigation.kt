@@ -54,6 +54,9 @@ import ee.movara.app.ui.search.SearchViewModel
 import ee.movara.app.ui.selectedgenre.SelectedGenreScreen
 import ee.movara.app.ui.selectedgenre.SelectedGenreViewModel
 import ee.movara.app.ui.selectedgenre.SelectedGenreViewModelFactory
+import ee.movara.app.ui.moviedetails.MovieDetailsRouteContent
+import ee.movara.app.ui.moviedetails.MovieDetailsViewModel
+
 
 // Main navigation structure of application.
 // Defines the three primary destinations: Home, Genres and My Movies.
@@ -79,7 +82,11 @@ fun MainNavigation(container: AppContainer) {
             outlinedIcon = R.drawable.ic_nav_home_outline,
             filledIcon = R.drawable.ic_nav_home_filled,
             selected = currentDestination?.hasRoute<HomeRoute>() == true,
-            onClick = { navController.openTab(HomeRoute) }
+            onClick = {
+              navController.popBackStack<HomeRoute>(
+                inclusive = false
+              )
+            }
           )
 
           MainTabItem(
@@ -214,21 +221,27 @@ fun MainNavigation(container: AppContainer) {
       }
 
 
-      composable<MovieDetailsRoute> {
-        Column(
-          modifier = Modifier.fillMaxSize(),
-          horizontalAlignment = Alignment.CenterHorizontally,
-          verticalArrangement = Arrangement.Center
-        ) {
-          Text("Movie Details", fontSize = 26.sp)
 
-          Button(
-            onClick = { navController.popBackStack() }
-          ) {
-            Text("Back")
-          }
+      composable<MovieDetailsRoute> { backStackEntry ->
+        val route = backStackEntry.toRoute<MovieDetailsRoute>()
+
+        val movieDetailsViewModel: MovieDetailsViewModel = viewModel(
+          viewModelStoreOwner = backStackEntry
+        ) {
+          MovieDetailsViewModel(
+            movieId = route.movieId,
+            repository = container.movieRepository
+          )
         }
+
+        MovieDetailsRouteContent(
+          viewModel = movieDetailsViewModel,
+          onBack = {
+            navController.popBackStack()
+          }
+        )
       }
+
 
 
       composable<AboutRoute> {
