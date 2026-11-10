@@ -1,8 +1,6 @@
 package ee.movara.app.ui.movies
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -14,11 +12,18 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import ee.movara.app.R
 import ee.movara.app.data.local.MovieListType
 import ee.movara.app.domain.model.Movie
 import ee.movara.app.ui.components.MovieRow
+import ee.movara.app.ui.components.MovieAction
+import ee.movara.app.ui.components.MovieActionButton
+import ee.movara.app.ui.components.EmptyState
+import ee.movara.app.ui.components.PulsingPlaceholder
 import ee.movara.app.ui.theme.*
 
 internal val MovieListType.label: String
@@ -42,13 +47,13 @@ fun SavedMoviesScreen(
     val medium = maxWidth >= 600.dp
     val margin = if (medium) MovaraSpacing.screenMarginExpanded else MovaraSpacing.screenMargin
     Column(
-      Modifier.fillMaxSize().padding(horizontal = margin),
+      Modifier.fillMaxSize().padding(horizontal = margin).padding(top = 16.dp),
       verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
       Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text("My Movies", Modifier.weight(1f), style = MaterialTheme.typography.displayMedium)
+        Text(stringResource(R.string.my_movies_title), Modifier.weight(1f), style = MaterialTheme.typography.displayMedium)
         IconButton(onClick = onAbout) {
-          Icon(painterResource(R.drawable.ic_ui_info), contentDescription = "About")
+          Icon(painterResource(R.drawable.ic_ui_info), contentDescription = stringResource(R.string.about_title))
         }
       }
       SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
@@ -56,51 +61,78 @@ fun SavedMoviesScreen(
           SegmentedButton(
             selected = selected == type,
             onClick = { selected = type },
+            icon = {},
             shape = SegmentedButtonDefaults.itemShape(index, MovieListType.entries.size, RoundedCornerShape(8.dp)),
             modifier = Modifier.heightIn(min = 48.dp),
             colors = SegmentedButtonDefaults.colors(
               activeContainerColor = MovaraGold,
               activeContentColor = MovaraBackground,
               inactiveContainerColor = MovaraSurface,
-              inactiveContentColor = MovaraTextSecondary
+              inactiveContentColor = MovaraTextSecondary,
+              activeBorderColor = MovaraGold,
+              inactiveBorderColor = MovaraBorder
             )
           ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
               Text(type.label, style = MaterialTheme.typography.labelSmall)
-              Text("${state.lists.movies(type).size}", style = MaterialTheme.typography.labelSmall)
+              Text(if (state.isLoading) "…" else "${state.lists.movies(type).size}", style = MaterialTheme.typography.labelSmall)
             }
           }
         }
       }
-      if (state.isLoading) CircularProgressIndicator()
-      state.storageError?.let {
-        Text(it)
-        TextButton(onClick = onRetry) { Text("Retry") }
-      }
       val movies = state.lists.movies(selected)
-      if (!state.isLoading && state.storageError == null && movies.isEmpty()) {
-        Text("No movies yet.", color = MovaraTextSecondary)
-      }
       // Each tab retains its own scroll position, including after opening movie details.
       tabStates.SaveableStateProvider(selected.name) {
-        if (medium) {
-          LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
-            contentPadding = PaddingValues(bottom = margin),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-          ) {
-            items(movies, key = { it.id }) { movie ->
-              SavedMovieItem(movie, state, onOpenMovie, onMembershipChange)
+        when {
+          state.isLoading -> {
+            val loadingLabel = stringResource(R.string.my_movies_loading)
+            LazyVerticalGrid(
+              columns = GridCells.Fixed(if (medium) 2 else 1),
+              modifier = Modifier.weight(1f).semantics { contentDescription = loadingLabel },
+              horizontalArrangement = Arrangement.spacedBy(16.dp),
+              verticalArrangement = Arrangement.spacedBy(16.dp),
+              contentPadding = PaddingValues(bottom = margin)
+            ) {
+              items(6) { PulsingPlaceholder(Modifier.fillMaxWidth().height(96.dp)) }
             }
           }
-        } else {
-          LazyColumn(
-            contentPadding = PaddingValues(bottom = margin),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-          ) {
-            items(movies, key = { it.id }) { movie ->
-              SavedMovieItem(movie, state, onOpenMovie, onMembershipChange)
+          state.storageError != null -> {
+            Column(
+              Modifier.weight(1f).fillMaxWidth(),
+              horizontalAlignment = Alignment.CenterHorizontally,
+              verticalArrangement = Arrangement.Center
+            ) {
+              EmptyState(stringResource(R.string.my_movies_storage_error))
+              TextButton(onClick = onRetry) { Text(stringResource(R.string.home_retry)) }
+            }
+          }
+          movies.isEmpty() -> {
+            Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+              EmptyState(
+                message = stringResource(when (selected) {
+                  MovieListType.LIKED -> R.string.my_movies_empty_liked
+                  MovieListType.WATCH_LATER -> R.string.my_movies_empty_watch_later
+                  MovieListType.WATCHED -> R.string.my_movies_empty_watched
+                }),
+                iconRes = when (selected) {
+                  MovieListType.LIKED -> R.drawable.ic_ui_favorite_outline
+                  MovieListType.WATCH_LATER -> R.drawable.ic_ui_bookmark_outline
+                  MovieListType.WATCHED -> R.drawable.ic_ui_visibility
+                }
+              )
+            }
+          }
+          else -> {
+            LazyVerticalGrid(
+              columns = GridCells.Fixed(if (medium) 2 else 1),
+              modifier = Modifier.weight(1f),
+              contentPadding = PaddingValues(bottom = margin),
+              horizontalArrangement = Arrangement.spacedBy(16.dp),
+              verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+              items(movies, key = { it.id }) { movie ->
+                SavedMovieItem(movie, selected, state, onOpenMovie, onMembershipChange)
+              }
             }
           }
         }
@@ -112,12 +144,35 @@ fun SavedMoviesScreen(
 @Composable
 private fun SavedMovieItem(
   movie: Movie,
+  selected: MovieListType,
   state: MovieListsUiState,
   onOpenMovie: (Int) -> Unit,
   onMembershipChange: (Movie, MovieListType, Boolean) -> Unit
 ) {
-  Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-    MovieRow(movie = movie, onClick = { onOpenMovie(movie.id) })
-    MovieMembershipActions(movie, state, onMembershipChange)
-  }
+  MovieRow(
+    movie = movie,
+    onClick = { onOpenMovie(movie.id) },
+    actions = if (selected == MovieListType.WATCH_LATER) {
+      {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+          MovieActionButton(
+            action = MovieAction.WATCHED,
+            isSelected = false,
+            onClick = { onMembershipChange(movie, MovieListType.WATCHED, true) },
+            enabled = state.actionsEnabled && movie.id !in state.pendingIds
+          )
+          IconButton(
+            onClick = { onMembershipChange(movie, MovieListType.WATCH_LATER, false) },
+            enabled = state.actionsEnabled && movie.id !in state.pendingIds
+          ) {
+            Icon(
+              painterResource(R.drawable.ic_ui_close),
+              stringResource(R.string.my_movies_remove, movie.title),
+              Modifier.size(20.dp)
+            )
+          }
+        }
+      }
+    } else null
+  )
 }
