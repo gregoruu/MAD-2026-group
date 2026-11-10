@@ -8,7 +8,14 @@
     <!-- Home screen -->
     <string name="home_search">Search movies</string>
     <string name="home_see_details">See Details</string>
-    <string name="home_because_you_liked">Because you liked %1$s</string>
+    <string name="home_because_you_enjoyed">Because you enjoyed %1$s</string>
+    <string name="home_from_favourites">Based on your favourite movies</string>
+    <string name="home_preferred_genre">Matches your interest in %1$s</string>
+    <string name="home_for_you">Picked for you</string>
+    <string name="home_more_discovery">More to discover</string>
+    <string name="home_cached">Showing saved recommendations. They may be out of date.</string>
+    <string name="home_partial_error">Some recommendations couldn’t load. Showing the available movies.</string>
+    <string name="home_empty_rating">No recommendations meet your %1$d+ minimum right now. Try again or edit Your taste.</string>
     <string name="home_trending">Trending this week</string>
     <string name="home_load_error">Couldn’t load movies. Please try again.</string>
     <string name="home_empty">No recommendations available right now. Try again later.</string>
@@ -60,4 +67,12 @@
     <string name="selected_genre_back">All Genres</string>
     <string name="selected_genre_retry">Try again</string>
     <string name="selected_genre_empty">No movies found for this genre.</string>
+
+    <string name="genres_empty">Genres are unavailable right now.</string>
+    <string name="my_movies_empty_liked">You have not liked any movies yet.</string>
+    <string name="my_movies_empty_watched">You have not marked any movies as watched yet.</string>
+    <string name="my_movies_empty_watch_later">
+    Your Watch Later list is empty.
+</string>
+
 </resources>

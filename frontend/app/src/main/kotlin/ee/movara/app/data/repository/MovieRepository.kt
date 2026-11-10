@@ -17,6 +17,22 @@ interface MovieRepository {
   suspend fun movieDetails(movieId: Int): RepositoryResult<MovieDetails>
   suspend fun discoverMovies(options: MovieDiscovery, page: Int = 1): RepositoryResult<MoviePage>
 
+  /** Policy overloads allow Home to reuse fresh responses without changing other screens. */
+  suspend fun trendingMovies(
+    page: Int = 1,
+    policy: MovieRequestPolicy
+  ): RepositoryResult<MoviePage> = trendingMovies(page)
+  suspend fun recommendedMovies(
+    movieId: Int,
+    page: Int = 1,
+    policy: MovieRequestPolicy
+  ): RepositoryResult<MoviePage> = recommendedMovies(movieId, page)
+  suspend fun discoverMovies(
+    options: MovieDiscovery,
+    page: Int = 1,
+    policy: MovieRequestPolicy
+  ): RepositoryResult<MoviePage> = discoverMovies(options, page)
+
   fun observeMovies(listType: MovieListType): Flow<RepositoryResult<List<Movie>>>
   fun observeLists(): Flow<RepositoryResult<MovieLists>>
   fun observeLikedMovies() = observeMovies(MovieListType.LIKED)

@@ -23,7 +23,7 @@ import org.junit.Test
 class MovieListsViewModelTest {
   private val models = mutableListOf<ViewModel>()
   private fun lists() = MovieListsViewModel(repository).also { models += it }
-  private fun home(lists: MovieListsViewModel) = HomeViewModel(repository, lists.store).also { models += it }
+  private fun home(lists: MovieListsViewModel) = HomeViewModel(repository, ee.movara.app.ui.preferences.QuizTasteRepository(), lists.store).also { models += it }
   private val movie = Movie(603, "The Matrix", null, 1999)
   private val repository = ListsRepository()
 
@@ -36,14 +36,14 @@ class MovieListsViewModelTest {
     val home = home(lists)
     backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { home.uiState.collect() }
     advanceUntilIdle()
-    assertEquals(listOf(movie), home.uiState.value.rails.flatMap { it.movies })
+    assertEquals(listOf(movie), home.uiState.value.recommendations.map { it.movie })
     repository.snapshots.value = RepositoryResult.Success(MovieLists(watched = listOf(movie)), DataSource.LOCAL)
     advanceUntilIdle()
-    assertTrue(home.uiState.value.rails.flatMap { it.movies }.isEmpty())
+    assertTrue(home.uiState.value.recommendations.map { it.movie }.isEmpty())
     assertEquals(1, repository.trendingCalls)
     repository.snapshots.value = RepositoryResult.Success(MovieLists(), DataSource.LOCAL)
     advanceUntilIdle()
-    assertEquals(listOf(movie), home.uiState.value.rails.flatMap { it.movies })
+    assertEquals(listOf(movie), home.uiState.value.recommendations.map { it.movie })
     assertEquals(1, repository.trendingCalls)
   }
 
@@ -130,12 +130,12 @@ class MovieListsViewModelTest {
     val home = home(lists)
     backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { home.uiState.collect() }
     advanceUntilIdle()
-    assertTrue(home.uiState.value.rails.single().failed)
+    assertTrue(home.uiState.value.loadFailed)
     repository.snapshots.value = RepositoryResult.Error(ErrorCategory.DATABASE, "Storage unavailable")
     advanceUntilIdle()
     assertNotNull(lists.uiState.value.storageError)
     assertTrue(home.uiState.value.loadFailed)
-    assertTrue(home.uiState.value.rails.isEmpty())
+    assertTrue(home.uiState.value.recommendations.isEmpty())
     repository.snapshots.value = RepositoryResult.Success(MovieLists(), DataSource.LOCAL)
     repository.remoteError = false
     repository.movies = listOf(movie)
@@ -144,7 +144,7 @@ class MovieListsViewModelTest {
     advanceUntilIdle()
     assertNull(lists.uiState.value.storageError)
     assertFalse(home.uiState.value.loadFailed)
-    assertEquals(listOf(movie), home.uiState.value.rails.flatMap { it.movies })
+    assertEquals(listOf(movie), home.uiState.value.recommendations.map { it.movie })
     assertEquals(2, repository.trendingCalls)
   }
 
@@ -157,7 +157,7 @@ class MovieListsViewModelTest {
     val home = home(lists)
     advanceUntilIdle()
     assertTrue(home.uiState.value.loading)
-    assertTrue(home.uiState.value.rails.isEmpty())
+    assertTrue(home.uiState.value.recommendations.isEmpty())
     assertNull(home.uiState.value.topPick)
     assertEquals(0, repository.trendingCalls)
     lists.setMembership(movie, MovieListType.LIKED, true)
@@ -166,7 +166,7 @@ class MovieListsViewModelTest {
     gate.complete(Unit)
     advanceUntilIdle()
     assertFalse(home.uiState.value.loading)
-    assertTrue(home.uiState.value.rails.single().movies.isEmpty())
+    assertTrue(home.uiState.value.recommendations.isEmpty())
     assertNull(home.uiState.value.topPick)
   }
 
@@ -189,14 +189,14 @@ class MovieListsViewModelTest {
     network.complete(Unit)
     advanceUntilIdle()
     assertTrue(home.uiState.value.loading)
-    assertTrue(home.uiState.value.rails.isEmpty())
+    assertTrue(home.uiState.value.recommendations.isEmpty())
     assertNull(home.uiState.value.topPick)
 
     repository.snapshots.value = RepositoryResult.Success(MovieLists(watched = listOf(movie)), DataSource.LOCAL)
     storage.complete(Unit)
     advanceUntilIdle()
     assertFalse(home.uiState.value.loading)
-    assertTrue(home.uiState.value.rails.single().movies.isEmpty())
+    assertTrue(home.uiState.value.recommendations.isEmpty())
     assertEquals(1, repository.trendingCalls)
     assertTrue(displayedPicks.isEmpty())
   }
@@ -226,7 +226,7 @@ class MovieListsViewModelTest {
     advanceUntilIdle()
     assertFalse(details.uiState.value.actionsEnabled)
     assertTrue(home.uiState.value.loadFailed)
-    assertTrue(home.uiState.value.rails.isEmpty())
+    assertTrue(home.uiState.value.recommendations.isEmpty())
     assertEquals("Storage unavailable", details.uiState.value.actionError)
   }
 }

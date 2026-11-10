@@ -182,7 +182,9 @@ private fun AppNavigation(container: AppContainer) {
     ) {
 
       composable<HomeRoute> {
-        val homeViewModel = viewModel { HomeViewModel(container.movieRepository, movieLists.store) }
+        val homeViewModel = viewModel {
+          HomeViewModel(container.movieRepository, container.movieTasteRepository, movieLists.store)
+        }
         HomeScreen(
           viewModel = homeViewModel,
           onSearch = { navController.navigate(SearchRoute) },

@@ -46,14 +46,27 @@ class DefaultMovieRepository(
     return moviePage("search:$query:$page", page) { api.searchMovies(query, page) }
   }
 
-  override suspend fun trendingMovies(page: Int): RepositoryResult<MoviePage> {
+  override suspend fun trendingMovies(page: Int): RepositoryResult<MoviePage> =
+    trendingMovies(page, MovieRequestPolicy.NETWORK_FIRST)
+
+  override suspend fun trendingMovies(
+    page: Int,
+    policy: MovieRequestPolicy
+  ): RepositoryResult<MoviePage> {
     if (page <= 0) return invalidInput()
-    return moviePage("trending:$page", page) { api.trendingMovies(page) }
+    return moviePage("trending:$page", page, policy) { api.trendingMovies(page) }
   }
 
-  override suspend fun recommendedMovies(movieId: Int, page: Int): RepositoryResult<MoviePage> {
+  override suspend fun recommendedMovies(movieId: Int, page: Int): RepositoryResult<MoviePage> =
+    recommendedMovies(movieId, page, MovieRequestPolicy.NETWORK_FIRST)
+
+  override suspend fun recommendedMovies(
+    movieId: Int,
+    page: Int,
+    policy: MovieRequestPolicy
+  ): RepositoryResult<MoviePage> {
     if (movieId <= 0 || page <= 0) return invalidInput()
-    return moviePage("recommendations:$movieId:$page", page) {
+    return moviePage("recommendations:$movieId:$page", page, policy) {
       api.recommendedMovies(movieId, page)
     }
   }
@@ -66,6 +79,12 @@ class DefaultMovieRepository(
   override suspend fun discoverMovies(
     options: MovieDiscovery,
     page: Int
+  ): RepositoryResult<MoviePage> = discoverMovies(options, page, MovieRequestPolicy.NETWORK_FIRST)
+
+  override suspend fun discoverMovies(
+    options: MovieDiscovery,
+    page: Int,
+    policy: MovieRequestPolicy
   ): RepositoryResult<MoviePage> {
     if (page !in 1..500 || (options.genreId != null && options.genreId !in 1..999999999) ||
       (options.minimumRating != null && options.minimumRating !in 0..10) ||
@@ -82,7 +101,7 @@ class DefaultMovieRepository(
     val key = "discover:${options.genreId ?: "all"}:$sortBy:" +
       "${options.minimumRating ?: "any"}:${options.minimumVotes ?: "any"}:" +
       "${options.releasedBy ?: "any"}:$page"
-    return moviePage(key, page) {
+    return moviePage(key, page, policy) {
       api.discoverMovies(
         options.genreId, sortBy, options.minimumRating, options.minimumVotes,
         options.releasedBy?.toString(), page
@@ -103,8 +122,9 @@ class DefaultMovieRepository(
   private suspend fun moviePage(
     key: String,
     page: Int,
+    policy: MovieRequestPolicy = MovieRequestPolicy.NETWORK_FIRST,
     fetch: suspend () -> MoviePageDto
-  ): RepositoryResult<MoviePage> = request<MoviePageDto, MoviePage>(key, fetch) { dto ->
+  ): RepositoryResult<MoviePage> = request<MoviePageDto, MoviePage>(key, fetch, policy) { dto ->
     require(dto.page == page && dto.totalPages >= 0 && dto.totalResults >= 0)
     require(dto.totalPages == 0 || dto.page <= dto.totalPages)
     val movies = dto.toDomainMovies()
@@ -114,12 +134,30 @@ class DefaultMovieRepository(
     MoviePage(movies, dto.page, dto.totalPages, dto.totalResults)
   }
 
-  /** One network attempt. Only validated successful responses can replace a cache entry. */
+  /** Optional fresh-cache read, then one network attempt and the existing offline fallback. */
   private suspend inline fun <reified D, T> request(
     key: String,
     crossinline fetch: suspend () -> D,
+    policy: MovieRequestPolicy = MovieRequestPolicy.NETWORK_FIRST,
     crossinline map: (D) -> T
   ): RepositoryResult<T> = withContext(dispatcher) {
+    if (policy == MovieRequestPolicy.PREFER_FRESH_CACHE) {
+      try {
+        val entry = cache.get(key)
+        val currentTime = now()
+        if (entry != null && entry.fetchedAt <= currentTime &&
+          currentTime - entry.fetchedAt in 0 until MovieRequestPolicy.FRESH_CACHE_MILLIS) {
+          val cached = map(tmdbJson.decodeFromString<D>(entry.responseJson))
+          return@withContext RepositoryResult.Success(
+            cached, DataSource.CACHE, entry.fetchedAt, cachePersisted = true, freshCacheHit = true
+          )
+        }
+      } catch (cancelled: CancellationException) {
+        throw cancelled
+      } catch (_: Exception) {
+        // Unreadable or invalid cached content must not block a usable network response.
+      }
+    }
     val dto: D
     val data: T
     try {
