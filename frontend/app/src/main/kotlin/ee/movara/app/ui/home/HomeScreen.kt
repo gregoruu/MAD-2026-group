@@ -18,14 +18,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
@@ -59,14 +55,6 @@ fun HomeScreen(
   modifier: Modifier = Modifier
 ) {
   val state by viewModel.uiState.collectAsStateWithLifecycle()
-  val snackbar = remember { SnackbarHostState() }
-  val actionError = stringResource(R.string.home_action_error)
-  LaunchedEffect(state.actionFailed) {
-    if (state.actionFailed) {
-      snackbar.showSnackbar(actionError)
-      viewModel.dismissActionError()
-    }
-  }
   androidx.compose.foundation.layout.Box(modifier.fillMaxSize()) {
     HomeContent(
       state = state,
@@ -77,7 +65,6 @@ fun HomeScreen(
       onRetry = viewModel::retry,
       onEditPreferences = onEditPreferences
     )
-    SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter))
   }
 }
 
@@ -186,10 +173,12 @@ internal fun HomeContent(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                   ) {
                     MovieActionButton(
-                      MovieAction.LIKE, movie.id in state.likedIds, { onLike(movie) }
+                      MovieAction.LIKE, movie.id in state.likedIds, { onLike(movie) },
+                      enabled = state.actionsEnabled && movie.id !in state.pendingIds
                     )
                     MovieActionButton(
-                      MovieAction.WATCH_LATER, movie.id in state.watchLaterIds, { onWatchLater(movie) }
+                      MovieAction.WATCH_LATER, movie.id in state.watchLaterIds, { onWatchLater(movie) },
+                      enabled = state.actionsEnabled && movie.id !in state.pendingIds
                     )
                   }
                 }

@@ -86,7 +86,7 @@ class SelectedGenreScreenTest {
         }
     }
 
-    
+
     @Test
     fun emptyGenreShowsMessageAndIcon() {
         composeRule.setContent {

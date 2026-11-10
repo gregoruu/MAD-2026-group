@@ -228,6 +228,7 @@ private class SearchRepository : MovieRepository {
   override suspend fun recommendedMovies(movieId: Int, page: Int): RepositoryResult<MoviePage> = error("Unused")
   override suspend fun moviesInGenre(genreId: Int, page: Int): RepositoryResult<MoviePage> = error("Unused")
   override suspend fun movieDetails(movieId: Int): RepositoryResult<MovieDetails> = error("Unused")
+  override fun observeLists(): Flow<RepositoryResult<ee.movara.app.domain.model.MovieLists>> = error("Unused")
   override fun observeMovies(listType: MovieListType): Flow<RepositoryResult<List<Movie>>> = error("Unused")
   override fun observeCount(listType: MovieListType): Flow<RepositoryResult<Int>> = error("Unused")
   override fun observeMembership(movieId: Int, listType: MovieListType): Flow<RepositoryResult<Boolean>> = error("Unused")

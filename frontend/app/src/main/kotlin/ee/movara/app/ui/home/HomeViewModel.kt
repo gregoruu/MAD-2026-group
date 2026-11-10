@@ -6,8 +6,8 @@ import ee.movara.app.data.local.MovieListType
 import ee.movara.app.data.repository.HomeRecommendationLoader
 import ee.movara.app.data.repository.MovieRepository
 import ee.movara.app.data.repository.MovieTasteRepository
-import ee.movara.app.data.repository.RepositoryResult
 import ee.movara.app.domain.model.Movie
+import ee.movara.app.ui.movies.MovieListsStore
 import ee.movara.app.domain.model.MovieTastePreferences
 import ee.movara.app.domain.model.MovieTasteProfile
 import ee.movara.app.domain.recommendation.MovieRecommendation
@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -39,8 +40,10 @@ data class HomeUiState(
   val watchLaterIds: Set<Int> = emptySet(),
   val loadFailed: Boolean = false,
   val usingCache: Boolean = false,
-  val actionFailed: Boolean = false,
-  val minimumRating: Int? = null
+  val minimumRating: Int? = null,
+  val storageError: String? = null,
+  val actionsEnabled: Boolean = true,
+  val pendingIds: Set<Int> = emptySet()
 ) {
   val topRecommendation: MovieRecommendation? get() = recommendations.firstOrNull()
   val topPick: Movie? get() = topRecommendation?.movie
@@ -58,12 +61,9 @@ data class HomeUiState(
 private data class HomeData(
   val loading: Boolean = true,
   val preferences: MovieTastePreferences = MovieTastePreferences(),
-  val likedIds: Set<Int> = emptySet(),
-  val watchLaterIds: Set<Int> = emptySet(),
   val batches: List<RecommendationBatch> = emptyList(),
   val loadFailed: Boolean = false,
   val usingCache: Boolean = false,
-  val actionFailed: Boolean = false,
   val today: LocalDate = LocalDate.MIN
 )
 
@@ -75,44 +75,36 @@ private data class HomeInput(
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class HomeViewModel(
-  private val repository: MovieRepository,
+  repository: MovieRepository,
   private val tasteRepository: MovieTasteRepository,
+  private val movieLists: MovieListsStore,
   private val today: () -> LocalDate = { LocalDate.now(ZoneOffset.UTC) }
 ) : ViewModel() {
   private val state = MutableStateFlow(HomeData())
   private val loader = HomeRecommendationLoader(repository)
   private val refresh = MutableStateFlow(0)
   private var completedRefresh = 0
-  private val pendingActions = mutableSetOf<Pair<Int, MovieListType>>()
 
   // Keep all fetched candidates. Watched changes rerank immediately without extra HTTP requests.
-  val uiState = combine(state, refresh.flatMapLatest { repository.observeWatchedMovies() }) { current, watched ->
-    val watchedIds = (watched as? RepositoryResult.Success)?.data?.map(Movie::id)?.toSet()
+  val uiState = combine(state, movieLists.uiState) { current, saved ->
+    val watchedIds = saved.lists.watched.map(Movie::id).toSet()
     HomeUiState(
-      loading = current.loading,
-      recommendations = if (watchedIds == null) emptyList() else MovieRecommendations.rank(
-        current.batches, current.preferences, current.likedIds, watchedIds, current.today
+      loading = saved.storageError == null && (current.loading || saved.isLoading),
+      recommendations = if (saved.isLoading || saved.storageError != null) emptyList() else MovieRecommendations.rank(
+        current.batches, current.preferences, saved.lists.liked.map(Movie::id).toSet(), watchedIds, current.today
       ),
-      likedIds = current.likedIds,
-      watchLaterIds = current.watchLaterIds,
-      loadFailed = current.loadFailed || watchedIds == null,
+      likedIds = saved.lists.liked.map(Movie::id).toSet(),
+      watchLaterIds = saved.lists.watchLater.map(Movie::id).toSet(),
+      loadFailed = current.loadFailed || saved.storageError != null,
       usingCache = current.usingCache,
-      actionFailed = current.actionFailed,
-      minimumRating = current.preferences.minimumRating
+      minimumRating = current.preferences.minimumRating,
+      storageError = saved.storageError,
+      actionsEnabled = saved.actionsEnabled,
+      pendingIds = saved.pendingIds
     )
   }.stateIn(viewModelScope, SharingStarted.Eagerly, HomeUiState())
 
   init {
-    viewModelScope.launch {
-      refresh.flatMapLatest { repository.observeWatchLaterMovies() }.collect { result ->
-        when (result) {
-          is RepositoryResult.Success -> state.update {
-            it.copy(watchLaterIds = result.data.map(Movie::id).toSet())
-          }
-          is RepositoryResult.Error -> state.update { it.copy(actionFailed = true) }
-        }
-      }
-    }
     viewModelScope.launch {
       refresh.flatMapLatest { refreshVersion ->
         // Retry resubscribes after a failed DataStore read instead of substituting default preferences.
@@ -122,8 +114,11 @@ class HomeViewModel(
           if (failure is CancellationException) throw failure
           emit(null)
         }
-        combine(preferences, repository.observeLikedMovies()) { taste, liked ->
-          HomeInput(taste, (liked as? RepositoryResult.Success)?.data, refreshVersion)
+        combine(preferences, movieLists.uiState
+          .filter { !it.isLoading && it.storageError == null }
+          .map { it.lists.liked }
+          .distinctUntilChanged()) { taste, liked ->
+          HomeInput(taste, liked, refreshVersion)
         }.distinctUntilChanged()
       }.collectLatest { input ->
         val preferences = input.preferences
@@ -135,7 +130,7 @@ class HomeViewModel(
         val date = today()
         state.update { it.copy(
           loading = true, loadFailed = false, usingCache = false, batches = emptyList(),
-          preferences = preferences, likedIds = likes.map(Movie::id).toSet(), today = date
+          preferences = preferences, today = date
         ) }
         val result = loader.load(
           preferences, likes, date, forceRefresh = input.refreshVersion != completedRefresh
@@ -150,28 +145,15 @@ class HomeViewModel(
     }
   }
 
-  fun retry() { refresh.value += 1 }
+  fun retry() {
+    if (movieLists.uiState.value.storageError != null) movieLists.retry()
+    refresh.value += 1
+  }
 
   fun toggleLike(movie: Movie) = toggle(movie, MovieListType.LIKED)
   fun toggleWatchLater(movie: Movie) = toggle(movie, MovieListType.WATCH_LATER)
 
-  fun dismissActionError() { state.update { it.copy(actionFailed = false) } }
-
   private fun toggle(movie: Movie, listType: MovieListType) {
-    val key = movie.id to listType
-    if (!pendingActions.add(key)) return
-    viewModelScope.launch {
-      try {
-        val ids = if (listType == MovieListType.LIKED) state.value.likedIds else state.value.watchLaterIds
-        val result = if (movie.id in ids) {
-          repository.removeMovie(movie.id, listType)
-        } else {
-          repository.saveMovie(movie, listType)
-        }
-        if (result is RepositoryResult.Error) state.update { it.copy(actionFailed = true) }
-      } finally {
-        pendingActions.remove(key)
-      }
-    }
+    movieLists.setMembership(movie, listType, !movieLists.uiState.value.lists.contains(movie.id, listType))
   }
 }

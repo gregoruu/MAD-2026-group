@@ -37,7 +37,8 @@ fun MovieDetailsScreen(
     onWatchLaterClick: () -> Unit,
     onWatchedClick: () -> Unit,
     onBack: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    actionsEnabled: Boolean = true
 ) {
     BoxWithConstraints(
         modifier = modifier
@@ -83,6 +84,7 @@ fun MovieDetailsScreen(
                         onLikeClick = onLikeClick,
                         onWatchLaterClick = onWatchLaterClick,
                         onWatchedClick = onWatchedClick,
+                        actionsEnabled = actionsEnabled,
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -106,6 +108,7 @@ fun MovieDetailsScreen(
                     onLikeClick = onLikeClick,
                     onWatchLaterClick = onWatchLaterClick,
                     onWatchedClick = onWatchedClick,
+                    actionsEnabled = actionsEnabled,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(
@@ -203,7 +206,8 @@ private fun MovieInformation(
     onLikeClick: () -> Unit,
     onWatchLaterClick: () -> Unit,
     onWatchedClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    actionsEnabled: Boolean = true
 ) {
     Column(
         modifier = modifier,
@@ -280,19 +284,22 @@ private fun MovieInformation(
             MovieActionButton(
                 action = MovieAction.LIKE,
                 isSelected = isLiked,
-                onClick = onLikeClick
+                onClick = onLikeClick,
+                enabled = actionsEnabled
             )
 
             MovieActionButton(
                 action = MovieAction.WATCH_LATER,
                 isSelected = isWatchLater,
-                onClick = onWatchLaterClick
+                onClick = onWatchLaterClick,
+                enabled = actionsEnabled
             )
 
             MovieActionButton(
                 action = MovieAction.WATCHED,
                 isSelected = isWatched,
-                onClick = onWatchedClick
+                onClick = onWatchedClick,
+                enabled = actionsEnabled
             )
         }
 

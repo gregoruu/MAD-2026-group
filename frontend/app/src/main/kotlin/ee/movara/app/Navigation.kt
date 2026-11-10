@@ -8,7 +8,6 @@ import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -22,7 +21,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.padding
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
@@ -37,8 +35,6 @@ import androidx.compose.ui.res.painterResource
 import ee.movara.app.ui.theme.MovaraTextSecondary
 import androidx.compose.ui.graphics.Color
 import ee.movara.app.ui.about.AboutScreen
-import androidx.compose.material3.IconButton
-import androidx.compose.ui.res.stringResource
 import ee.movara.app.ui.genres.GenresScreen
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -47,6 +43,15 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.navigation.toRoute
+import ee.movara.app.ui.movies.MovieListsViewModel
+import ee.movara.app.ui.movies.SavedMoviesScreen
+import ee.movara.app.ui.movies.label
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import ee.movara.app.ui.home.HomeScreen
 import ee.movara.app.ui.home.HomeViewModel
 import ee.movara.app.ui.preferences.MoviePreferenceQuizScreen
@@ -101,11 +106,32 @@ fun MainNavigation(container: AppContainer) {
 @Composable
 private fun AppNavigation(container: AppContainer) {
   val navController = rememberNavController()
+  val movieLists: MovieListsViewModel = viewModel { MovieListsViewModel(container.movieRepository) }
+  val listsState by movieLists.uiState.collectAsStateWithLifecycle()
+  val snackbarHost = remember { SnackbarHostState() }
+  LaunchedEffect(movieLists) {
+    movieLists.feedback.collect { feedback ->
+      val result = snackbarHost.showSnackbar(
+        message = feedback.error?.let { "Could not update ${feedback.type.label}: $it" }
+          ?: if (feedback.selected) "Added to ${feedback.type.label}" else "Removed from ${feedback.type.label}",
+        actionLabel = if (feedback.error != null) "Retry" else if (!feedback.selected) "Undo" else null,
+        withDismissAction = true,
+        duration = SnackbarDuration.Short
+      )
+      if (result == SnackbarResult.ActionPerformed) {
+        movieLists.setMembership(
+          feedback.movie, feedback.type,
+          if (feedback.error != null) feedback.selected else true
+        )
+      }
+    }
+  }
   val currentDestination =
     navController.currentBackStackEntryAsState().value?.destination
 
 //Shared layout and bottom navigation bar
   Scaffold(
+    snackbarHost = { SnackbarHost(snackbarHost) },
     bottomBar = {
       val hideBottomBar =
         currentDestination?.hasRoute<AboutRoute>() == true ||
@@ -157,7 +183,7 @@ private fun AppNavigation(container: AppContainer) {
 
       composable<HomeRoute> {
         val homeViewModel = viewModel {
-          HomeViewModel(container.movieRepository, container.movieTasteRepository)
+          HomeViewModel(container.movieRepository, container.movieTasteRepository, movieLists.store)
         }
         HomeScreen(
           viewModel = homeViewModel,
@@ -198,34 +224,14 @@ private fun AppNavigation(container: AppContainer) {
       }
 
       composable<MyMoviesRoute> {
-        Box(
-          modifier = Modifier.fillMaxSize()
-        ) {
-          // Info button opens the About screen
-          IconButton(
-            onClick = {
-              navController.navigate(AboutRoute)
-            },
-            modifier = Modifier
-              .align(Alignment.TopEnd)
-              .padding(8.dp)
-              .size(48.dp)
-          ) {
-            Icon(
-              painter = painterResource(R.drawable.ic_ui_info),
-              contentDescription = stringResource(R.string.about_open),
-              tint = MovaraGold
-            )
-          }
-
-          Text(
-            text = "My Movies",
-            fontSize = 26.sp,
-            modifier = Modifier.align(Alignment.Center)
-          )
-        }
+        SavedMoviesScreen(
+          state = listsState,
+          onMembershipChange = movieLists::setMembership,
+          onOpenMovie = { navController.navigate(MovieDetailsRoute(it)) },
+          onAbout = { navController.navigate(AboutRoute) },
+          onRetry = movieLists::retry
+        )
       }
-
 
       composable<SelectedGenreRoute> { backStackEntry ->
         val route = backStackEntry.toRoute<SelectedGenreRoute>()
@@ -273,7 +279,8 @@ private fun AppNavigation(container: AppContainer) {
         ) {
           MovieDetailsViewModel(
             movieId = route.movieId,
-            repository = container.movieRepository
+            repository = container.movieRepository,
+            movieLists = movieLists.store
           )
         }
 
@@ -371,15 +378,4 @@ private fun RowScope.MainTabItem(
       unselectedTextColor = MovaraTextSecondary
     )
   )
-}
-
-
-@Composable
-private fun PlaceholderScreen(title: String) {
-  Box(
-    modifier = Modifier.fillMaxSize(),
-    contentAlignment = Alignment.Center
-  ) {
-    Text(text = title, fontSize = 26.sp)
-  }
 }

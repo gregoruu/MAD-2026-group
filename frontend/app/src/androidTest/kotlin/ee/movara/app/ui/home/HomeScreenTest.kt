@@ -1,6 +1,7 @@
 package ee.movara.app.ui.home
 
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -193,4 +194,34 @@ class HomeScreenTest {
       .assertDoesNotExist()
   }
 
+  @Test fun loadingHidesRecommendationsAndKeepsSearchAvailable() {
+    compose.setContent {
+      MovaraTheme {
+        HomeContent(
+          HomeUiState(loading = true, recommendations = listOf(MovieRecommendation(movie))),
+          {}, {}, {}, {}, {}
+        )
+      }
+    }
+    compose.onNodeWithContentDescription("Search movies").assertIsDisplayed()
+    compose.onNodeWithText("Arrival").assertDoesNotExist()
+    compose.onNodeWithText("See Details").assertDoesNotExist()
+  }
+
+  @Test fun pendingMembershipDisablesSpotlightActions() {
+    compose.setContent {
+      MovaraTheme {
+        HomeContent(
+          HomeUiState(
+            loading = false,
+            recommendations = listOf(MovieRecommendation(movie)),
+            pendingIds = setOf(movie.id)
+          ),
+          {}, {}, {}, {}, {}
+        )
+      }
+    }
+    compose.onNodeWithText("Like").performScrollTo().assertIsNotEnabled()
+    compose.onNodeWithText("Watch Later").performScrollTo().assertIsNotEnabled()
+  }
 }

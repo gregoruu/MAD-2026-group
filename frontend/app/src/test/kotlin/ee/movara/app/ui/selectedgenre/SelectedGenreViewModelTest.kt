@@ -7,6 +7,7 @@ import ee.movara.app.data.repository.MovieRepository
 import ee.movara.app.data.repository.RepositoryResult
 import ee.movara.app.domain.model.Movie
 import ee.movara.app.domain.model.MovieDetails
+import ee.movara.app.domain.model.MovieLists
 import ee.movara.app.domain.model.MoviePage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -258,6 +259,9 @@ private class FakeMovieRepository : MovieRepository {
     override fun observeMovies(
         listType: MovieListType
     ): Flow<RepositoryResult<List<Movie>>> =
+        flowOf(unused())
+
+    override fun observeLists(): Flow<RepositoryResult<MovieLists>> =
         flowOf(unused())
 
     override fun observeCount(

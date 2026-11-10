@@ -2,11 +2,23 @@ package ee.movara.app.data.local
 
 import androidx.room.Dao
 import androidx.room.Query
+import androidx.room.Transaction
 import androidx.room.Upsert
 import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface SavedMovieDao {
+
+    @Transaction
+    suspend fun markWatched(movie: SavedMovieEntity) {
+        require(movie.listType == MovieListType.WATCHED)
+        upsert(movie)
+        remove(movie.tmdbId, MovieListType.WATCH_LATER)
+    }
+
+    // One query gives every screen a consistent snapshot after list transactions.
+    @Query("SELECT * FROM saved_movie ORDER BY addedAt DESC, tmdbId ASC")
+    fun observeAllMovies(): Flow<List<SavedMovieEntity>>
 
     @Query(
         """

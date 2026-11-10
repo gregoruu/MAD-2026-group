@@ -19,7 +19,7 @@ The starter welcome screen stays in `ui/main`. Keep UI state in its screen packa
 put reusable movie/genre models in `domain/model`. Package README files retain
 the currently unused folders in Git.
 
-Data flow: **Screen → ViewModel → repository → remote/local source**.
+Data flow: **Screen ā†’ ViewModel ā†’ repository ā†’ remote/local source**.
 State flows back to the screen through a read-only `StateFlow`, collected with
 `collectAsStateWithLifecycle`. ViewModels accept repository interfaces through
 their constructors and never call Retrofit services or DAOs directly. Repositories
@@ -61,9 +61,27 @@ through `MovieRequestPolicy.PREFER_FRESH_CACHE`; these hits make no network atte
 cached results may be stale. Cancellation propagates normally.
 
 Saved-list observations, counts and membership are flows of results containing domain
-data. Save/remove operations delegate to the existing DAO. List business rules (#39),
-connectivity UI (#43) and image caching (#48) remain separate features.
-Home recommendation orchestration and ranking are described below.
+data. Saving a watched membership also removes Watch Later inside one DAO transaction;
+liked membership remains independent. `observeLists()` reads all memberships in one
+query, providing a consistent snapshot to `MovieListsStore`, whose coroutine scope is
+owned by the navigation-scoped `MovieListsViewModel`. Home and Movie Details depend on
+the store rather than another ViewModel.
+Home, My Movies and Movie Details share that state and write through the repository.
+Home retains its Spotlight card and uses the personalized recommendation orchestration
+and ranking described below. Watched changes rerank all fetched candidates without
+another TMDB request. Recommendations stay hidden until the
+saved-list snapshot loads successfully, including during retries and storage errors.
+Search retains its query submission, pagination and movie navigation. Connectivity UI
+(#43) and image caching (#48) remain separate features.
+
+Write failures preserve the last Room snapshot and leave recommendations and list
+actions available. The store emits one feedback event per failed write or confirmed
+change. Navigation owns the shared SnackbarHost: successful changes show confirmation,
+removals offer Undo, and failed writes offer Retry for the same operation. Only loading,
+observation errors and a pending write for the same movie block membership actions.
+My Movies uses counted segmented tabs, one list on compact screens and two columns
+from 600 dp, with independent saved scroll positions per category.
+
 
 The endpoints, the failure behaviour and the logging rules are in
 [docs/api-docs.md](api-docs.md).

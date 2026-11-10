@@ -1,20 +1,26 @@
 
 package ee.movara.app.ui.moviedetails
 
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import ee.movara.app.data.local.MovieListType
 import ee.movara.app.data.repository.DataSource
 import ee.movara.app.data.repository.ErrorCategory
 import ee.movara.app.data.repository.MovieRepository
 import ee.movara.app.data.repository.RepositoryResult
 import ee.movara.app.domain.model.Movie
+import ee.movara.app.domain.model.MovieLists
+import ee.movara.app.ui.movies.MovieListsViewModel
 import ee.movara.app.domain.model.MovieDetails
 import ee.movara.app.domain.model.MovieDiscovery
 import ee.movara.app.domain.model.MoviePage
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -27,6 +33,11 @@ import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class MovieDetailsViewModelTest {
+    private val models = mutableListOf<ViewModel>()
+    private fun viewModel(repository: MovieRepository): MovieDetailsViewModel {
+        val lists = MovieListsViewModel(repository).also { models += it }
+        return MovieDetailsViewModel(123, repository, lists.store).also { models += it }
+    }
 
     @Before
     fun setUp() {
@@ -35,6 +46,7 @@ class MovieDetailsViewModelTest {
 
     @After
     fun tearDown() {
+        models.forEach { it.viewModelScope.cancel() }
         Dispatchers.resetMain()
     }
 
@@ -55,10 +67,7 @@ class MovieDetailsViewModelTest {
     @Test
     fun loadsMovieDetailsSuccessfully() = runTest {
         val repository = FakeDetailsRepository(details)
-        val viewModel = MovieDetailsViewModel(
-            movieId = 123,
-            repository = repository
-        )
+        val viewModel = viewModel(repository)
 
         assertTrue(viewModel.uiState.value.isLoading)
 
@@ -79,10 +88,7 @@ class MovieDetailsViewModelTest {
             message = "Network error"
         )
 
-        val viewModel = MovieDetailsViewModel(
-            movieId = 123,
-            repository = repository
-        )
+        val viewModel = viewModel(repository)
 
         advanceUntilIdle()
 
@@ -109,7 +115,7 @@ class MovieDetailsViewModelTest {
     @Test
     fun savedStatesAreObservedFromRepository() = runTest {
         val repository = FakeDetailsRepository(details)
-        val viewModel = MovieDetailsViewModel(123, repository)
+        val viewModel = viewModel(repository)
 
         advanceUntilIdle()
 
@@ -130,7 +136,7 @@ class MovieDetailsViewModelTest {
     @Test
     fun likeButtonSavesAndRemovesMovie() = runTest {
         val repository = FakeDetailsRepository(details)
-        val viewModel = MovieDetailsViewModel(123, repository)
+        val viewModel = viewModel(repository)
 
         advanceUntilIdle()
 
@@ -161,7 +167,7 @@ class MovieDetailsViewModelTest {
             true
         )
 
-        val viewModel = MovieDetailsViewModel(123, repository)
+        val viewModel = viewModel(repository)
         advanceUntilIdle()
 
         assertTrue(viewModel.uiState.value.isWatchLater)
@@ -190,7 +196,7 @@ class MovieDetailsViewModelTest {
         val repository = FakeDetailsRepository(details)
         repository.failSave = true
 
-        val viewModel = MovieDetailsViewModel(123, repository)
+        val viewModel = viewModel(repository)
         advanceUntilIdle()
 
         viewModel.toggleLike()
@@ -199,18 +205,24 @@ class MovieDetailsViewModelTest {
         assertFalse(viewModel.uiState.value.isLiked)
         assertEquals(
             "Could not save movie",
-            viewModel.uiState.value.actionError
+            models.filterIsInstance<MovieListsViewModel>().single().feedback.first().error
         )
 
-        viewModel.clearActionError()
+        assertNull(viewModel.uiState.value.actionError)
+        assertTrue(viewModel.uiState.value.actionsEnabled)
+        repository.failSave = false
+        viewModel.toggleLike()
+        advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.actionsEnabled)
+        assertTrue(viewModel.uiState.value.isLiked)
 
         assertNull(viewModel.uiState.value.actionError)
     }
 
     @Test
-    fun rapidConsecutiveActionsAreBothProcessed() = runTest {
+    fun pendingActionBlocksFurtherTapsUntilRoomConfirms() = runTest {
         val repository = FakeDetailsRepository(details)
-        val viewModel = MovieDetailsViewModel(123, repository)
+        val viewModel = viewModel(repository)
 
         advanceUntilIdle()
 
@@ -221,6 +233,9 @@ class MovieDetailsViewModelTest {
         advanceUntilIdle()
 
         assertTrue(viewModel.uiState.value.isLiked)
+        assertFalse(viewModel.uiState.value.isWatchLater)
+        viewModel.toggleWatchLater()
+        advanceUntilIdle()
         assertTrue(viewModel.uiState.value.isWatchLater)
 
         assertEquals(
@@ -252,6 +267,10 @@ private class FakeDetailsRepository(
     val saved = mutableListOf<Pair<Int, MovieListType>>()
     val removed = mutableListOf<Pair<Int, MovieListType>>()
 
+    private val snapshots = MutableStateFlow<RepositoryResult<MovieLists>>(success(MovieLists()))
+    private val movie = Movie(details.id, details.title, details.posterPath, details.releaseYear)
+    override fun observeLists(): Flow<RepositoryResult<MovieLists>> = snapshots
+
     private val memberships =
         MovieListType.entries.associateWith {
             MutableStateFlow<RepositoryResult<Boolean>>(
@@ -264,6 +283,13 @@ private class FakeDetailsRepository(
         selected: Boolean
     ) {
         memberships.getValue(type).value = success(selected)
+        val lists = (snapshots.value as RepositoryResult.Success).data
+        fun updated() = if (selected) listOf(movie) else emptyList()
+        snapshots.value = success(when (type) {
+            MovieListType.LIKED -> lists.copy(liked = updated())
+            MovieListType.WATCH_LATER -> lists.copy(watchLater = updated())
+            MovieListType.WATCHED -> lists.copy(watched = updated())
+        })
     }
 
     override suspend fun movieDetails(
@@ -292,6 +318,7 @@ private class FakeDetailsRepository(
 
         saved.add(movie.id to listType)
         setMembership(listType, true)
+        if (listType == MovieListType.WATCHED) removeMovie(movie.id, MovieListType.WATCH_LATER)
 
         return success(Unit)
     }

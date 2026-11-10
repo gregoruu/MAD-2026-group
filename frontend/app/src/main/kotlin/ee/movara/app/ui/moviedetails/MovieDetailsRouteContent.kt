@@ -1,7 +1,6 @@
 
 package ee.movara.app.ui.moviedetails
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -18,21 +17,7 @@ fun MovieDetailsRouteContent(
     onBack: () -> Unit
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val snackbarHostState = remember { SnackbarHostState() }
-
-    LaunchedEffect(state.actionError) {
-        state.actionError?.let { message ->
-            snackbarHostState.showSnackbar(message)
-            viewModel.clearActionError()
-        }
-    }
-
-    Scaffold(
-        containerColor = MovaraBackground,
-        snackbarHost = {
-            SnackbarHost(snackbarHostState)
-        }
-    ) { padding ->
+    Scaffold(containerColor = MovaraBackground) { padding ->
 
         when {
             state.isLoading -> {
@@ -105,17 +90,23 @@ fun MovieDetailsRouteContent(
             state.movie != null -> {
                 val movie = requireNotNull(state.movie)
 
-                MovieDetailsScreen(
-                    movie = movie,
-                    isLiked = state.isLiked,
-                    isWatchLater = state.isWatchLater,
-                    isWatched = state.isWatched,
-                    onLikeClick = viewModel::toggleLike,
-                    onWatchLaterClick = viewModel::toggleWatchLater,
-                    onWatchedClick = viewModel::toggleWatched,
-                    onBack = onBack,
-                    modifier = Modifier.padding(padding)
-                )
+                Column(Modifier.padding(padding)) {
+                    state.actionError?.let { message ->
+                        Text(message, Modifier.padding(horizontal = 20.dp))
+                        TextButton(onClick = viewModel::retryLists) { Text("Retry storage") }
+                    }
+                    MovieDetailsScreen(
+                        movie = movie,
+                        isLiked = state.isLiked,
+                        isWatchLater = state.isWatchLater,
+                        isWatched = state.isWatched,
+                        onLikeClick = viewModel::toggleLike,
+                        onWatchLaterClick = viewModel::toggleWatchLater,
+                        onWatchedClick = viewModel::toggleWatched,
+                        onBack = onBack,
+                        actionsEnabled = state.actionsEnabled
+                    )
+                }
             }
 
             else -> {

@@ -1,5 +1,8 @@
 package ee.movara.app.ui.home
 
+import androidx.lifecycle.ViewModel
+import ee.movara.app.ui.movies.MovieListsViewModel
+import ee.movara.app.ui.movies.MovieListsStore
 import androidx.lifecycle.viewModelScope
 import ee.movara.app.data.local.MovieListType
 import ee.movara.app.data.repository.DataSource
@@ -24,11 +27,16 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class HomeViewModelTest {
   private val dispatcher = UnconfinedTestDispatcher()
-  private val models = mutableListOf<HomeViewModel>()
+  private val models = mutableListOf<ViewModel>()
   private val repository = HomeRepository()
   private val taste = HomeTasteRepository()
   private val today = LocalDate.of(2026, 11, 9)
-  private fun viewModel() = HomeViewModel(repository, taste) { today }.also { models += it }
+  private lateinit var store: MovieListsStore
+  private fun viewModel(): HomeViewModel {
+    val lists = MovieListsViewModel(repository).also { models += it }
+    store = lists.store
+    return HomeViewModel(repository, taste, store) { today }.also { models += it }
+  }
   private fun HomeViewModel.ids() = uiState.value.recommendations.map { it.movie.id }
 
   @Before fun setUp() { Dispatchers.setMain(dispatcher) }
@@ -261,10 +269,11 @@ class HomeViewModelTest {
     repository.failSave = true
     val model = viewModel()
     model.toggleWatchLater(movie(100))
-    assertTrue(model.uiState.value.actionFailed)
+    assertNotNull(store.feedback.first().error)
+    assertFalse(model.uiState.value.loadFailed)
+    assertTrue(model.uiState.value.actionsEnabled)
     assertFalse(100 in model.uiState.value.watchLaterIds)
-    model.dismissActionError()
-    assertFalse(model.uiState.value.actionFailed)
+    assertEquals(listOf(100), model.ids())
   }
 }
 
@@ -349,6 +358,20 @@ private class HomeRepository : MovieRepository {
   override suspend fun discoverMovies(options: MovieDiscovery, page: Int): RepositoryResult<MoviePage> {
     discoveryOptions += options
     return delayed(success(page(movie(1000 + (options.genreId ?: 0)))))
+  }
+  override fun observeLists(): Flow<RepositoryResult<MovieLists>> = flow {
+    if (watchedReadFailure) emit(failure) else emitAll(combine(liked, saved, watched) { likes, later, seen ->
+      when {
+        likes is RepositoryResult.Error -> likes
+        later is RepositoryResult.Error -> later
+        seen is RepositoryResult.Error -> seen
+        else -> success(MovieLists(
+          liked = (likes as RepositoryResult.Success).data,
+          watchLater = (later as RepositoryResult.Success).data,
+          watched = (seen as RepositoryResult.Success).data
+        ))
+      }
+    })
   }
   override fun observeMovies(listType: MovieListType) =
     when (listType) {
