@@ -8,7 +8,6 @@ import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.background
@@ -139,9 +138,9 @@ private fun AppNavigation(container: AppContainer) {
           currentDestination?.hasRoute<MoviePreferencesRoute>() == true
 
       if (!hideBottomBar) {
+        // No fixed height: the bar's own 80 dp minimum sits above the system inset
+        // and the bar grows when a large font needs room for the labels.
         NavigationBar(
-
-        modifier = Modifier.height(80.dp),
         containerColor = MovaraSurface
       ) {
 

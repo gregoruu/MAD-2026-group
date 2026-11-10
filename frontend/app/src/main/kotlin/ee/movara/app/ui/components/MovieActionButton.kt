@@ -71,7 +71,9 @@ fun MovieActionButton(
         onClick = onClick,
         enabled = enabled,
         modifier = modifier.heightIn(min = 48.dp).alpha(if (enabled) 1f else 0.5f),
-        shape = PillShape,
+        // The theme's 24 dp radius: a pill at the 48 dp minimum height. The radius is
+        // fixed, so the corners do not cut the text when a large font wraps the label.
+        shape = MaterialTheme.shapes.extraLarge,
         contentPadding = PaddingValues(
             horizontal = 16.dp,
             vertical = 10.dp
@@ -91,10 +93,10 @@ fun MovieActionButton(
 
         Spacer(Modifier.width(8.dp))
 
+        // No line limit: with a large font the label wraps and the button grows.
         Text(
             text = label,
-            style = MaterialTheme.typography.labelLarge,
-            maxLines = 1
+            style = MaterialTheme.typography.labelLarge
         )
     }
 }
