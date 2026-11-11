@@ -18,6 +18,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import ee.movara.app.R
+import ee.movara.app.ui.layout.LocalScreenLayout
 import ee.movara.app.ui.theme.*
 
 //Displays information about Movara, team members, TMDB attribution and third-party licenses.
@@ -26,12 +27,14 @@ import ee.movara.app.ui.theme.*
 fun AboutScreen(
     onBack: () -> Unit
 ) {
+    val screenMargin = LocalScreenLayout.current.screenMargin
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(MovaraBackground)
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp)
+            .padding(horizontal = screenMargin)
     ) {
         // Screen header with back navigation.
         Row(

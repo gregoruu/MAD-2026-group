@@ -19,6 +19,7 @@ import ee.movara.app.R
 import ee.movara.app.data.local.MovieListType
 import ee.movara.app.domain.model.Movie
 import ee.movara.app.ui.components.MovieRow
+import ee.movara.app.ui.layout.LocalScreenLayout
 import ee.movara.app.ui.theme.*
 
 internal val MovieListType.label: String
@@ -38,9 +39,10 @@ fun SavedMoviesScreen(
 ) {
   var selected by rememberSaveable { mutableStateOf(MovieListType.LIKED) }
   val tabStates = rememberSaveableStateHolder()
-  BoxWithConstraints(Modifier.fillMaxSize()) {
-    val medium = maxWidth >= 600.dp
-    val margin = if (medium) MovaraSpacing.screenMarginExpanded else MovaraSpacing.screenMargin
+  val layout = LocalScreenLayout.current
+  Box(Modifier.fillMaxSize()) {
+    val columns = layout.savedMovieColumns
+    val margin = layout.screenMargin
     Column(
       Modifier.fillMaxSize().padding(horizontal = margin),
       verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -83,9 +85,9 @@ fun SavedMoviesScreen(
       }
       // Each tab retains its own scroll position, including after opening movie details.
       tabStates.SaveableStateProvider(selected.name) {
-        if (medium) {
+        if (columns > 1) {
           LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
+            columns = GridCells.Fixed(columns),
             contentPadding = PaddingValues(bottom = margin),
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)

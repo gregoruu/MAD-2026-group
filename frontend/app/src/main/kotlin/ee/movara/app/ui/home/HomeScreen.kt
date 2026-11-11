@@ -1,7 +1,7 @@
 package ee.movara.app.ui.home
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
@@ -42,6 +42,8 @@ import ee.movara.app.ui.components.MovieActionButton
 import ee.movara.app.ui.components.MovieCard
 import ee.movara.app.ui.components.PulsingPlaceholder
 import ee.movara.app.ui.components.SpotlightCard
+import ee.movara.app.ui.layout.LocalScreenLayout
+import ee.movara.app.ui.layout.ScreenLayoutForAvailableSize
 import ee.movara.app.ui.theme.MovaraTheme
 import ee.movara.app.ui.components.EmptyState
 import ee.movara.app.ui.state.UiState
@@ -55,7 +57,7 @@ fun HomeScreen(
   modifier: Modifier = Modifier
 ) {
   val state by viewModel.uiState.collectAsStateWithLifecycle()
-  androidx.compose.foundation.layout.Box(modifier.fillMaxSize()) {
+  Box(modifier.fillMaxSize()) {
     HomeContent(
       state = state,
       onSearch = onSearch,
@@ -80,9 +82,11 @@ internal fun HomeContent(
   onEditPreferences: () -> Unit = {}
 ) {
   val configuration = LocalConfiguration.current
-  BoxWithConstraints(modifier.fillMaxSize()) {
-    val horizontalSpotlight = maxWidth >= 600.dp
-    val screenMargin = if (horizontalSpotlight) 24.dp else 20.dp
+  val layout = LocalScreenLayout.current
+  Box(modifier.fillMaxSize()) {
+    // Medium screens show the Spotlight as a wide card with the poster on the left
+    val horizontalSpotlight = layout.isMedium
+    val screenMargin = layout.screenMargin
     val spotlightHeight = configuration.screenHeightDp.dp * 0.62f
     LazyColumn(
       modifier = Modifier.fillMaxSize(),
@@ -266,9 +270,11 @@ private fun HomeMessage(message: String, retry: Boolean, onRetry: () -> Unit, sc
 private fun HomePreview() {
   val movie = Movie(1, "The Grand Budapest Hotel", null, 2014)
   MovaraTheme {
-    HomeContent(
-      HomeUiState(loading = false, recommendations = listOf(MovieRecommendation(movie))),
-      {}, {}, {}, {}, {}
-    )
+    ScreenLayoutForAvailableSize {
+      HomeContent(
+        HomeUiState(loading = false, recommendations = listOf(MovieRecommendation(movie))),
+        {}, {}, {}, {}, {}
+      )
+    }
   }
 }

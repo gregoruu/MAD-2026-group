@@ -8,6 +8,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.unit.dp
 import ee.movara.app.domain.model.Movie
 import ee.movara.app.domain.model.MovieLists
+import ee.movara.app.ui.layout.ScreenLayoutForAvailableSize
 import ee.movara.app.ui.theme.MovaraTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -45,10 +46,12 @@ class SavedMoviesScreenTest {
     compose.setContent {
       MovaraTheme {
         Box(Modifier.requiredSize(700.dp, 840.dp)) {
-          SavedMoviesScreen(
-            state = MovieListsUiState(MovieLists(liked = listOf(liked, later)), false),
-            onMembershipChange = { _, _, _ -> }, onOpenMovie = {}, onAbout = {}, onRetry = {}
-          )
+          ScreenLayoutForAvailableSize {
+            SavedMoviesScreen(
+              state = MovieListsUiState(MovieLists(liked = listOf(liked, later)), false),
+              onMembershipChange = { _, _, _ -> }, onOpenMovie = {}, onAbout = {}, onRetry = {}
+            )
+          }
         }
       }
     }

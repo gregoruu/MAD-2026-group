@@ -267,6 +267,8 @@ dependencies {
   implementation(libs.androidx.compose.ui)
   implementation(libs.androidx.compose.ui.tooling.preview)
   implementation(libs.androidx.compose.material3)
+  // Window size classes that switch between the compact and medium layouts
+  implementation(libs.androidx.compose.material3.windowsizeclass)
   // Tooling
   debugImplementation(libs.androidx.compose.ui.tooling)
   // Instrumented tests

@@ -38,6 +38,8 @@ import ee.movara.app.R
 import ee.movara.app.domain.model.GenreCatalog
 import ee.movara.app.domain.model.Movie
 import ee.movara.app.domain.model.MovieTastePreferences
+import ee.movara.app.ui.layout.LocalScreenLayout
+import ee.movara.app.ui.layout.ScreenLayoutForAvailableSize
 import ee.movara.app.ui.components.MovieSearchField
 import ee.movara.app.ui.components.TmdbImage
 import ee.movara.app.ui.theme.MovaraTheme
@@ -111,6 +113,7 @@ internal fun MoviePreferenceQuizContent(
   actions: QuizActions = QuizActions()
 ) {
   val editable = !state.loadingProfile && !state.profileLoadFailed && !state.saving
+  val screenMargin = LocalScreenLayout.current.screenMargin
   Surface(color = MaterialTheme.colorScheme.background) {
     Column(
       Modifier.fillMaxSize()
@@ -118,7 +121,7 @@ internal fun MoviePreferenceQuizContent(
       horizontalAlignment = Alignment.CenterHorizontally
     ) {
       Column(
-        Modifier.widthIn(max = 840.dp).fillMaxSize().padding(horizontal = 20.dp),
+        Modifier.widthIn(max = 840.dp).fillMaxSize().padding(horizontal = screenMargin),
         verticalArrangement = Arrangement.spacedBy(12.dp)
       ) {
         Row(
@@ -508,9 +511,11 @@ fun PreferenceStartupScreen(loading: Boolean, onRetry: () -> Unit, onContinue: (
 @Composable
 private fun GenreQuizPreview() {
   MovaraTheme {
-    MoviePreferenceQuizContent(
-      MoviePreferenceQuizState(loadingProfile = false, genreIds = setOf(28, 878))
-    )
+    ScreenLayoutForAvailableSize {
+      MoviePreferenceQuizContent(
+        MoviePreferenceQuizState(loadingProfile = false, genreIds = setOf(28, 878))
+      )
+    }
   }
 }
 

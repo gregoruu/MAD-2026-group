@@ -2,8 +2,12 @@
 package ee.movara.app
 
 
-import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,12 +19,17 @@ import androidx.compose.foundation.background
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.NavigationRail
+import androidx.compose.material3.NavigationRailItem
+import androidx.compose.material3.NavigationRailItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.dp
+import ee.movara.app.ui.layout.LocalScreenLayout
 import androidx.compose.foundation.layout.padding
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
@@ -129,198 +138,234 @@ private fun AppNavigation(container: AppContainer) {
   val currentDestination =
     navController.currentBackStackEntryAsState().value?.destination
 
-//Shared layout and bottom navigation bar
+  val layout = LocalScreenLayout.current
+
+  // About, Movie Details and the preference quiz are shown without the main navigation
+  val hideMainNavigation =
+    currentDestination?.hasRoute<AboutRoute>() == true ||
+      currentDestination?.hasRoute<MovieDetailsRoute>() == true ||
+      currentDestination?.hasRoute<MoviePreferencesRoute>() == true
+  val showBottomBar = !hideMainNavigation && !layout.isMedium
+  val showNavigationRail = !hideMainNavigation && layout.isMedium
+
+  // Shared layout: bottom navigation bar on compact screens, navigation rail on medium
   Scaffold(
-    snackbarHost = { SnackbarHost(snackbarHost) },
+    snackbarHost = {
+      // Keep the snackbar next to the rail, not on top of it
+      val snackbarStart = if (showNavigationRail) NavigationRailWidth else 0.dp
+      SnackbarHost(snackbarHost, modifier = Modifier.padding(start = snackbarStart))
+    },
     bottomBar = {
-      val hideBottomBar =
-        currentDestination?.hasRoute<AboutRoute>() == true ||
-          currentDestination?.hasRoute<MovieDetailsRoute>() == true ||
-          currentDestination?.hasRoute<MoviePreferencesRoute>() == true
-
-      if (!hideBottomBar) {
+      if (showBottomBar) {
         NavigationBar(
-
-        modifier = Modifier.height(80.dp),
-        containerColor = MovaraSurface
-      ) {
-
-          MainTabItem(
-            label = "Home",
-            outlinedIcon = R.drawable.ic_nav_home_outline,
-            filledIcon = R.drawable.ic_nav_home_filled,
-            selected = currentDestination?.hasRoute<HomeRoute>() == true,
-            onClick = {
-              navController.openTab(HomeRoute)
-            }
-          )
-
-          MainTabItem(
-            label = "Genres",
-            outlinedIcon = R.drawable.ic_nav_style_outline,
-            filledIcon = R.drawable.ic_nav_style_filled,
-            selected = currentDestination?.hasRoute<GenresRoute>() == true,
-            onClick = { navController.openTab(GenresRoute) }
-          )
-
-          MainTabItem(
-            label = "My Movies",
-            outlinedIcon = R.drawable.ic_nav_person_outline,
-            filledIcon = R.drawable.ic_nav_person_filled,
-            selected = currentDestination?.hasRoute<MyMoviesRoute>() == true,
-            onClick = { navController.openTab(MyMoviesRoute) }
-          )
+          modifier = Modifier.height(80.dp),
+          containerColor = MovaraSurface
+        ) {
+          for (tab in mainTabs) {
+            val selected = tab.isSelected(currentDestination)
+            NavigationBarItem(
+              selected = selected,
+              onClick = { navController.openTab(tab.route) },
+              icon = { MainTabIcon(tab, selected) },
+              label = { Text(tab.label) },
+              colors = NavigationBarItemDefaults.colors(
+                selectedIconColor = MovaraGold,
+                selectedTextColor = MovaraGold,
+                indicatorColor = Color.Transparent,
+                unselectedIconColor = MovaraTextSecondary,
+                unselectedTextColor = MovaraTextSecondary
+              )
+            )
+          }
         }
       }
     }
-    // Register all navigation destinations and their screen content
   ) { padding ->
-    NavHost(
-      navController = navController,
-      startDestination = HomeRoute,
-      modifier = Modifier.padding(padding).consumeWindowInsets(padding)
-    ) {
+    // The rail reaches the screen edges and pads itself against the system bars, so the
+    // content next to it must not repeat the padding on the rail's side.
+    val layoutDirection = LocalLayoutDirection.current
+    val contentPadding = if (showNavigationRail) {
+      PaddingValues(
+        top = padding.calculateTopPadding(),
+        end = padding.calculateEndPadding(layoutDirection),
+        bottom = padding.calculateBottomPadding()
+      )
+    } else {
+      padding
+    }
 
-      composable<HomeRoute> {
-        val homeViewModel = viewModel {
-          HomeViewModel(container.movieRepository, container.movieTasteRepository, movieLists.store)
+    Row(modifier = Modifier.fillMaxSize()) {
+      if (showNavigationRail) {
+        NavigationRail(containerColor = MovaraSurface) {
+          for (tab in mainTabs) {
+            val selected = tab.isSelected(currentDestination)
+            NavigationRailItem(
+              selected = selected,
+              onClick = { navController.openTab(tab.route) },
+              icon = { MainTabIcon(tab, selected) },
+              label = { Text(tab.label) },
+              colors = NavigationRailItemDefaults.colors(
+                selectedIconColor = MovaraGold,
+                selectedTextColor = MovaraGold,
+                indicatorColor = Color.Transparent,
+                unselectedIconColor = MovaraTextSecondary,
+                unselectedTextColor = MovaraTextSecondary
+              )
+            )
+          }
         }
-        HomeScreen(
-          viewModel = homeViewModel,
-          onSearch = { navController.navigate(SearchRoute) },
-          onMovieClick = { movieId -> navController.navigate(MovieDetailsRoute(movieId)) },
-          onEditPreferences = { navController.navigate(MoviePreferencesRoute) }
-        )
       }
 
-      composable<SearchRoute> {
-        val searchViewModel: SearchViewModel = viewModel(
-          factory = viewModelFactory {
-            initializer {
-              SearchViewModel(container.movieRepository, createSavedStateHandle())
+      // Register all navigation destinations and their screen content
+      NavHost(
+        navController = navController,
+        startDestination = HomeRoute,
+        modifier = Modifier
+          .weight(1f)
+          .padding(contentPadding)
+          // The rail already covers the start inset, so all of it counts as handled
+          .consumeWindowInsets(padding)
+      ) {
+
+        composable<HomeRoute> {
+          val homeViewModel = viewModel {
+            HomeViewModel(container.movieRepository, container.movieTasteRepository, movieLists.store)
+          }
+          HomeScreen(
+            viewModel = homeViewModel,
+            onSearch = { navController.navigate(SearchRoute) },
+            onMovieClick = { movieId -> navController.navigate(MovieDetailsRoute(movieId)) },
+            onEditPreferences = { navController.navigate(MoviePreferencesRoute) }
+          )
+        }
+
+        composable<SearchRoute> {
+          val searchViewModel: SearchViewModel = viewModel(
+            factory = viewModelFactory {
+              initializer {
+                SearchViewModel(container.movieRepository, createSavedStateHandle())
+              }
             }
-          }
-        )
-        val state by searchViewModel.uiState.collectAsStateWithLifecycle()
-        SearchScreen(
-          state = state,
-          onQueryChange = searchViewModel::onQueryChange,
-          onSearch = searchViewModel::submitSearch,
-          onLoadMore = searchViewModel::loadMore,
-          onRetry = searchViewModel::retry,
-          onMovieClick = { navController.navigate(MovieDetailsRoute(it)) },
-          onBack = { navController.popBackStack() }
-        )
-      }
-
-      composable<GenresRoute> {
-        GenresScreen(
-          onGenreClick = { genreId ->
-            navController.navigate(
-              SelectedGenreRoute(genreId)
-            )
-          }
-        )
-      }
-
-      composable<MyMoviesRoute> {
-        SavedMoviesScreen(
-          state = listsState,
-          onMembershipChange = movieLists::setMembership,
-          onOpenMovie = { navController.navigate(MovieDetailsRoute(it)) },
-          onAbout = { navController.navigate(AboutRoute) },
-          onRetry = movieLists::retry
-        )
-      }
-
-      composable<SelectedGenreRoute> { backStackEntry ->
-        val route = backStackEntry.toRoute<SelectedGenreRoute>()
-
-        val selectedGenreViewModel: SelectedGenreViewModel = viewModel(
-          viewModelStoreOwner = backStackEntry,
-          factory = SelectedGenreViewModelFactory(
-            genreId = route.genreId,
-            movieRepository = container.movieRepository
           )
-        )
-
-        // Observe changes in loading
-        val uiState = selectedGenreViewModel.uiState
-          .collectAsStateWithLifecycle().value
-
-        SelectedGenreScreen(
-          genreId = route.genreId,
-          movies = uiState.movies,
-          isLoading = uiState.isLoading,
-          isLoadingMore = uiState.isLoadingMore,
-          errorMessage = uiState.errorMessage,
-          loadMoreError = uiState.loadMoreError,
-          hasMore = uiState.hasMore,
-          onRetry = selectedGenreViewModel::retry,
-          onLoadMore = selectedGenreViewModel::loadMore,
-          onBack = {
-            navController.popBackStack()
-          },
-          onMovieClick = { movie ->
-            navController.navigate(
-              MovieDetailsRoute(movie.id)
-            )
-          }
-        )
-      }
-
-
-
-      composable<MovieDetailsRoute> { backStackEntry ->
-        val route = backStackEntry.toRoute<MovieDetailsRoute>()
-
-        val movieDetailsViewModel: MovieDetailsViewModel = viewModel(
-          viewModelStoreOwner = backStackEntry
-        ) {
-          MovieDetailsViewModel(
-            movieId = route.movieId,
-            repository = container.movieRepository,
-            movieLists = movieLists.store
+          val state by searchViewModel.uiState.collectAsStateWithLifecycle()
+          SearchScreen(
+            state = state,
+            onQueryChange = searchViewModel::onQueryChange,
+            onSearch = searchViewModel::submitSearch,
+            onLoadMore = searchViewModel::loadMore,
+            onRetry = searchViewModel::retry,
+            onMovieClick = { navController.navigate(MovieDetailsRoute(it)) },
+            onBack = { navController.popBackStack() }
           )
         }
 
-        MovieDetailsRouteContent(
-          viewModel = movieDetailsViewModel,
-          onBack = {
-            navController.popBackStack()
-          }
-        )
-      }
-
-
-      composable<MoviePreferencesRoute> {
-        val quiz: MoviePreferenceQuizViewModel = viewModel(
-          factory = viewModelFactory {
-            initializer {
-              MoviePreferenceQuizViewModel(
-                container.movieTasteRepository, container.movieRepository, createSavedStateHandle()
+        composable<GenresRoute> {
+          GenresScreen(
+            onGenreClick = { genreId ->
+              navController.navigate(
+                SelectedGenreRoute(genreId)
               )
             }
+          )
+        }
+
+        composable<MyMoviesRoute> {
+          SavedMoviesScreen(
+            state = listsState,
+            onMembershipChange = movieLists::setMembership,
+            onOpenMovie = { navController.navigate(MovieDetailsRoute(it)) },
+            onAbout = { navController.navigate(AboutRoute) },
+            onRetry = movieLists::retry
+          )
+        }
+
+        composable<SelectedGenreRoute> { backStackEntry ->
+          val route = backStackEntry.toRoute<SelectedGenreRoute>()
+
+          val selectedGenreViewModel: SelectedGenreViewModel = viewModel(
+            viewModelStoreOwner = backStackEntry,
+            factory = SelectedGenreViewModelFactory(
+              genreId = route.genreId,
+              movieRepository = container.movieRepository
+            )
+          )
+
+          // Observe changes in loading
+          val uiState = selectedGenreViewModel.uiState
+            .collectAsStateWithLifecycle().value
+
+          SelectedGenreScreen(
+            genreId = route.genreId,
+            movies = uiState.movies,
+            isLoading = uiState.isLoading,
+            isLoadingMore = uiState.isLoadingMore,
+            errorMessage = uiState.errorMessage,
+            loadMoreError = uiState.loadMoreError,
+            hasMore = uiState.hasMore,
+            onRetry = selectedGenreViewModel::retry,
+            onLoadMore = selectedGenreViewModel::loadMore,
+            onBack = {
+              navController.popBackStack()
+            },
+            onMovieClick = { movie ->
+              navController.navigate(
+                MovieDetailsRoute(movie.id)
+              )
+            }
+          )
+        }
+
+
+
+        composable<MovieDetailsRoute> { backStackEntry ->
+          val route = backStackEntry.toRoute<MovieDetailsRoute>()
+
+          val movieDetailsViewModel: MovieDetailsViewModel = viewModel(
+            viewModelStoreOwner = backStackEntry
+          ) {
+            MovieDetailsViewModel(
+              movieId = route.movieId,
+              repository = container.movieRepository,
+              movieLists = movieLists.store
+            )
           }
-        )
-        MoviePreferenceQuizScreen(
-          viewModel = quiz,
-          isEditing = true,
-          onFinished = { navController.popBackStack() },
-          onCancel = { navController.popBackStack() }
-        )
+
+          MovieDetailsRouteContent(
+            viewModel = movieDetailsViewModel,
+            onBack = {
+              navController.popBackStack()
+            }
+          )
+        }
+
+
+        composable<MoviePreferencesRoute> {
+          val quiz: MoviePreferenceQuizViewModel = viewModel(
+            factory = viewModelFactory {
+              initializer {
+                MoviePreferenceQuizViewModel(
+                  container.movieTasteRepository, container.movieRepository, createSavedStateHandle()
+                )
+              }
+            }
+          )
+          MoviePreferenceQuizScreen(
+            viewModel = quiz,
+            isEditing = true,
+            onFinished = { navController.popBackStack() },
+            onCancel = { navController.popBackStack() }
+          )
+        }
+
+
+        composable<AboutRoute> {
+          AboutScreen(
+            onBack = {
+              navController.popBackStack()
+            }
+          )
+        }
       }
-
-
-      composable<AboutRoute> {
-        AboutScreen(
-          onBack = {
-            navController.popBackStack()
-          }
-        )
-      }
-
-
     }
   }
 }
@@ -335,47 +380,63 @@ private fun <T : Any> NavHostController.openTab(route: T) {
   }
 }
 
-// Reusable bottom navigation item
-@Composable
-private fun RowScope.MainTabItem(
-  label: String,
-  outlinedIcon: Int,
-  filledIcon: Int,
-  selected: Boolean,
-  onClick: () -> Unit
-) {
-  NavigationBarItem(
-    selected = selected,
-    onClick = onClick,
-    icon = {
-      Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(3.dp)
-      ) {
-        Icon(
-          painter = painterResource(
-            id = if (selected) filledIcon else outlinedIcon
-          ),
-          contentDescription = null,
-          modifier = Modifier.size(24.dp)
-        )
+// One main destination, shown in the bottom navigation bar and in the navigation rail
+private class MainTab(
+  val label: String,
+  val outlinedIcon: Int,
+  val filledIcon: Int,
+  val route: Any,
+  val isSelected: (NavDestination?) -> Boolean
+)
 
-        if (selected) {
-          Box(
-            modifier = Modifier
-              .size(4.dp)
-              .background(MovaraGold, CircleShape)
-          )
-        }
-      }
-    },
-    label = { Text(label) },
-    colors = NavigationBarItemDefaults.colors(
-      selectedIconColor = MovaraGold,
-      selectedTextColor = MovaraGold,
-      indicatorColor = Color.Transparent,
-      unselectedIconColor = MovaraTextSecondary,
-      unselectedTextColor = MovaraTextSecondary
-    )
+// The Material 3 rail is 80 dp wide, as in the design specs
+private val NavigationRailWidth = 80.dp
+
+private val mainTabs = listOf(
+  MainTab(
+    label = "Home",
+    outlinedIcon = R.drawable.ic_nav_home_outline,
+    filledIcon = R.drawable.ic_nav_home_filled,
+    route = HomeRoute,
+    isSelected = { destination -> destination?.hasRoute<HomeRoute>() == true }
+  ),
+  MainTab(
+    label = "Genres",
+    outlinedIcon = R.drawable.ic_nav_style_outline,
+    filledIcon = R.drawable.ic_nav_style_filled,
+    route = GenresRoute,
+    isSelected = { destination -> destination?.hasRoute<GenresRoute>() == true }
+  ),
+  MainTab(
+    label = "My Movies",
+    outlinedIcon = R.drawable.ic_nav_person_outline,
+    filledIcon = R.drawable.ic_nav_person_filled,
+    route = MyMoviesRoute,
+    isSelected = { destination -> destination?.hasRoute<MyMoviesRoute>() == true }
   )
+)
+
+// Icon shared by both navigation components: filled with a small gold dot when selected
+@Composable
+private fun MainTabIcon(tab: MainTab, selected: Boolean) {
+  Column(
+    horizontalAlignment = Alignment.CenterHorizontally,
+    verticalArrangement = Arrangement.spacedBy(3.dp)
+  ) {
+    Icon(
+      painter = painterResource(
+        id = if (selected) tab.filledIcon else tab.outlinedIcon
+      ),
+      contentDescription = null,
+      modifier = Modifier.size(24.dp)
+    )
+
+    if (selected) {
+      Box(
+        modifier = Modifier
+          .size(4.dp)
+          .background(MovaraGold, CircleShape)
+      )
+    }
+  }
 }

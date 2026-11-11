@@ -39,6 +39,22 @@ service are configured through AppContainer. Mirror production packages under `s
 and `src/androidTest/kotlin`; use fake repository interfaces for ViewModel tests
 and pass plain state/data to screen UI tests and previews.
 
+## Layouts for two screen sizes
+
+`MainActivity` calculates the Material 3 `WindowSizeClass` of the window and turns its
+width class into a `ScreenLayout` (`ui/layout/ScreenLayout.kt`), which holds the values
+from [design-specs.md](design-specs.md) section 6: screen margin, column counts and
+whether the medium layout is used. The layout is provided through `LocalScreenLayout`.
+Screens read it instead of measuring their own width, so the navigation and every screen
+switch together at 600 dp of window width. Windows wider than medium reuse the medium
+layout, because only two sizes are designed.
+
+On medium screens `Navigation.kt` replaces the bottom navigation bar with a
+`NavigationRail` on the left. Both are built from the same list of main tabs and are
+hidden on the same screens. Previews and tests have no activity window; they wrap their
+content in `ScreenLayoutForAvailableSize`, which applies the same breakpoints to the
+space the content is given.
+
 ## TMDB API
 
 Movie data comes from TMDB over Retrofit and OkHttp. `AppContainer` owns one HTTP client
@@ -80,8 +96,7 @@ change. Navigation owns the shared SnackbarHost: successful changes show confirm
 removals offer Undo, and failed writes offer Retry for the same operation. Only loading,
 observation errors and a pending write for the same movie block membership actions.
 My Movies uses counted segmented tabs, one list on compact screens and two columns
-from 600 dp, with independent saved scroll positions per category.
-
+on medium screens, with independent saved scroll positions per category.
 
 The endpoints, the failure behaviour and the logging rules are in
 [docs/api-docs.md](api-docs.md).
