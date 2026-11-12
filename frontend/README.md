@@ -201,3 +201,49 @@ that the second request succeeds from disk without invoking the transport,
 which fails any subsequent network call. These tests need no TMDB key or
 external image server.
 
+
+## Error and offline states (#43)
+
+Movara monitors connectivity using AndroidNetworkMonitor.
+
+When the device has no validated internet connection, an
+offline banner appears at the top of the app. The banner
+disappears when connectivity is restored.
+
+Search, Selected Genre, Movie Details and Home display
+appropriate error messages and retry actions when requests
+fail. Retry actions repeat the relevant failed operation.
+
+Home preserves successful recommendation results when
+individual recommendation sources fail. Its retry mechanism
+re-fetches only failed sources if the recommendation inputs
+have not changed.
+
+Previously cached TMDB data may remain available offline.
+My Movies uses the local Room database and continues
+working without an internet connection.
+
+### Manual testing
+
+1. Launch Movara with internet access.
+2. Save movies to Liked, Watch Later and Watched.
+3. Enable airplane mode and disable Wi-Fi.
+4. Verify that the offline banner appears without covering
+   the system status bar or application content.
+5. Verify that My Movies remains usable.
+6. Open Search, Selected Genre and Movie Details using
+   uncached requests. Verify error messages and retry actions.
+7. Restore connectivity and verify that retries succeed.
+8. Verify that the offline banner disappears.
+
+### Automated tests
+
+Run:
+
+    ./gradlew :app:testDebugUnitTest
+    ./gradlew :app:connectedDebugAndroidTest
+
+Repository tests cover network errors, unavailable or
+corrupt caches, invalid responses and database failures.
+ViewModel tests cover error recovery and retry behaviour.
+Home tests additionally verify targeted recommendation retries.

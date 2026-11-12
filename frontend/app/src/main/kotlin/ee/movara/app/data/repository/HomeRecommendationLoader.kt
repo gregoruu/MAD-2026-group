@@ -16,11 +16,16 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 
+
 data class HomeRecommendationResult(
   val batches: List<RecommendationBatch>,
-  val hasFailures: Boolean,
-  val usingCache: Boolean
-)
+  val failedSources: Set<RecommendationSource>,
+  val staleSources: Set<RecommendationSource>
+) {
+  val hasFailures: Boolean get() = failedSources.isNotEmpty()
+  val usingCache: Boolean get() = staleSources.isNotEmpty()
+}
+
 
 /** Fetch a bounded first page per source, sharing MovieRepository's validation and offline cache. */
 class HomeRecommendationLoader(private val repository: MovieRepository) {
@@ -28,7 +33,8 @@ class HomeRecommendationLoader(private val repository: MovieRepository) {
     preferences: MovieTastePreferences,
     likedMovies: List<Movie>,
     today: LocalDate,
-    forceRefresh: Boolean = false
+    forceRefresh: Boolean = false,
+    retryFailedFrom: HomeRecommendationResult? = null
   ): HomeRecommendationResult = coroutineScope {
     val seeds = linkedMapOf<Int, RecommendationSource.Seed>()
     // Room returns newest Likes first. Quiz favourites have no timestamp, so use stable ID order.
@@ -39,31 +45,82 @@ class HomeRecommendationLoader(private val repository: MovieRepository) {
       seeds.putIfAbsent(id, RecommendationSource.Seed(id, preferences.favouriteTitles[id]))
     }
     val sources = seeds.values +
-      preferences.genreIds.sorted().map(RecommendationSource::Genre) +
-      RecommendationSource.Discovery
+            preferences.genreIds.sorted().map(RecommendationSource::Genre) +
+            RecommendationSource.Discovery
+
+    // Keep successful batches when retrying failed sources.
+    val previousBatches = retryFailedFrom
+      ?.batches
+      .orEmpty()
+      .associateBy { it.source }
+
+    val sourcesToFetch = sources.filter { source ->
+      retryFailedFrom == null ||
+              source in retryFailedFrom.failedSources ||
+              source !in previousBatches
+    }
+
     val semaphore = Semaphore(3)
-    val results = sources.map { source ->
+
+    val fetched = sourcesToFetch.map { source ->
       async {
         semaphore.withPermit {
           source to fetch(
-            source, preferences, today,
-            if (forceRefresh) MovieRequestPolicy.NETWORK_FIRST else MovieRequestPolicy.PREFER_FRESH_CACHE
+            source,
+            preferences,
+            today,
+            if (forceRefresh) {
+              MovieRequestPolicy.NETWORK_FIRST
+            } else {
+              MovieRequestPolicy.PREFER_FRESH_CACHE
+            }
           )
         }
       }
-    }.awaitAll()
-    HomeRecommendationResult(
-      batches = results.mapNotNull { (source, result) ->
-        (result as? RepositoryResult.Success)?.let { RecommendationBatch(source, it.data.movies) }
-      },
-      hasFailures = results.any { it.second is RepositoryResult.Error },
-      usingCache = results.any { (_, result) ->
-        result is RepositoryResult.Success && result.source == DataSource.CACHE && !result.freshCacheHit
+    }.awaitAll().toMap()
+
+    // Preserve original source order and successful results.
+    val batches = sources.mapNotNull { source ->
+      when (val result = fetched[source]) {
+        is RepositoryResult.Success ->
+          RecommendationBatch(source, result.data.movies)
+
+        is RepositoryResult.Error -> null
+
+        null -> previousBatches[source]
       }
+    }
+
+    val failedSources = fetched
+      .filterValues { it is RepositoryResult.Error }
+      .keys
+
+    val staleSources = retryFailedFrom
+      ?.staleSources
+      .orEmpty()
+      .intersect(sources.toSet())
+      .toMutableSet()
+
+    for ((source, result) in fetched) {
+      if (
+        result is RepositoryResult.Success &&
+        result.source == DataSource.CACHE &&
+        !result.freshCacheHit
+      ) {
+        staleSources.add(source)
+      } else {
+        staleSources.remove(source)
+      }
+    }
+
+    HomeRecommendationResult(
+      batches = batches,
+      failedSources = failedSources,
+      staleSources = staleSources
     )
   }
 
-  private suspend fun fetch(
+    private suspend fun fetch(
     source: RecommendationSource,
     preferences: MovieTastePreferences,
     today: LocalDate,

@@ -14,6 +14,8 @@ import ee.movara.app.data.repository.DefaultMovieRepository
 import ee.movara.app.data.repository.MovieRepository
 import ee.movara.app.data.repository.MovieTasteRepository
 import okhttp3.OkHttpClient
+import ee.movara.app.data.network.AndroidNetworkMonitor
+import ee.movara.app.data.network.NetworkMonitor
 
 /** Application-scoped dependencies. Screens receive repositories through their ViewModels. */
 class AppContainer(private val context: Context) {
@@ -44,4 +46,9 @@ class AppContainer(private val context: Context) {
   }
 
   val dataRepository: DataRepository by lazy { DefaultDataRepository() }
+
+  val networkMonitor: NetworkMonitor by lazy {
+    AndroidNetworkMonitor(context.applicationContext)
+  }
+
 }

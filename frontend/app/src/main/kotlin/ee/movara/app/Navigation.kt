@@ -66,6 +66,7 @@ import ee.movara.app.ui.selectedgenre.SelectedGenreViewModel
 import ee.movara.app.ui.selectedgenre.SelectedGenreViewModelFactory
 import ee.movara.app.ui.moviedetails.MovieDetailsRouteContent
 import ee.movara.app.ui.moviedetails.MovieDetailsViewModel
+import ee.movara.app.ui.components.OfflineBanner
 
 
 // Main navigation structure of application.
@@ -105,6 +106,8 @@ fun MainNavigation(container: AppContainer) {
 
 @Composable
 private fun AppNavigation(container: AppContainer) {
+  val isOnline by container.networkMonitor.isOnline
+    .collectAsStateWithLifecycle(initialValue = true)
   val navController = rememberNavController()
   val movieLists: MovieListsViewModel = viewModel { MovieListsViewModel(container.movieRepository) }
   val listsState by movieLists.uiState.collectAsStateWithLifecycle()
@@ -130,9 +133,15 @@ private fun AppNavigation(container: AppContainer) {
     navController.currentBackStackEntryAsState().value?.destination
 
 //Shared layout and bottom navigation bar
-  Scaffold(
-    snackbarHost = { SnackbarHost(snackbarHost) },
-    bottomBar = {
+
+    Scaffold(
+      topBar = {
+        if (!isOnline) {
+          OfflineBanner()
+        }
+      },
+      snackbarHost = { SnackbarHost(snackbarHost) },
+      bottomBar = {
       val hideBottomBar =
         currentDestination?.hasRoute<AboutRoute>() == true ||
           currentDestination?.hasRoute<MovieDetailsRoute>() == true ||

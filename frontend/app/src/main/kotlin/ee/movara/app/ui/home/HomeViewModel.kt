@@ -32,6 +32,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import ee.movara.app.ui.state.UiState
+import ee.movara.app.data.repository.HomeRecommendationResult
 
 data class HomeUiState(
   val loading: Boolean = true,
@@ -73,6 +74,14 @@ private data class HomeInput(
   val refreshVersion: Int
 )
 
+private data class PreviousHomeLoad(
+  val preferences: MovieTastePreferences,
+  val likedMovies: List<Movie>,
+  val date: LocalDate,
+  val result: HomeRecommendationResult
+)
+
+
 @OptIn(ExperimentalCoroutinesApi::class)
 class HomeViewModel(
   repository: MovieRepository,
@@ -84,6 +93,7 @@ class HomeViewModel(
   private val loader = HomeRecommendationLoader(repository)
   private val refresh = MutableStateFlow(0)
   private var completedRefresh = 0
+  private var previousLoad: PreviousHomeLoad? = null
 
   // Keep all fetched candidates. Watched changes rerank immediately without extra HTTP requests.
   val uiState = combine(state, movieLists.uiState) { current, saved ->
@@ -127,20 +137,59 @@ class HomeViewModel(
           state.update { it.copy(loading = false, batches = emptyList(), loadFailed = true) }
           return@collectLatest
         }
+
         val date = today()
-        state.update { it.copy(
-          loading = true, loadFailed = false, usingCache = false, batches = emptyList(),
-          preferences = preferences, today = date
-        ) }
+
+        val explicitRetry =
+          input.refreshVersion != completedRefresh
+
+        // Retry only failed sources when inputs are unchanged.
+        val retryPrevious = previousLoad?.takeIf {
+          explicitRetry &&
+                  it.preferences == preferences &&
+                  it.likedMovies == likes &&
+                  it.date == date &&
+                  it.result.hasFailures
+        }?.result
+
+        state.update {
+          it.copy(
+            loading = retryPrevious == null,
+            loadFailed = retryPrevious?.hasFailures ?: false,
+            usingCache = retryPrevious?.usingCache ?: false,
+            batches = retryPrevious?.batches ?: emptyList(),
+            preferences = preferences,
+            today = date
+          )
+        }
+
         val result = loader.load(
-          preferences, likes, date, forceRefresh = input.refreshVersion != completedRefresh
+          preferences = preferences,
+          likedMovies = likes,
+          today = date,
+          forceRefresh = explicitRetry,
+          retryFailedFrom = retryPrevious
         )
+
         currentCoroutineContext().ensureActive()
+
         completedRefresh = input.refreshVersion
-        state.update { it.copy(
-          loading = false, batches = result.batches,
-          loadFailed = result.hasFailures, usingCache = result.usingCache
-        ) }
+
+        previousLoad = PreviousHomeLoad(
+          preferences = preferences,
+          likedMovies = likes.toList(),
+          date = date,
+          result = result
+        )
+
+        state.update {
+          it.copy(
+            loading = false,
+            batches = result.batches,
+            loadFailed = result.hasFailures,
+            usingCache = result.usingCache
+          )
+        }
       }
     }
   }
