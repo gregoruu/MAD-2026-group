@@ -275,6 +275,68 @@ class HomeViewModelTest {
     assertFalse(100 in model.uiState.value.watchLaterIds)
     assertEquals(listOf(100), model.ids())
   }
+
+  @Test
+  fun retryFetchesOnlyTheFailedSourceAndRetainsSuccessfulRecommendations() = runTest {
+    repository.liked.value = success(
+      listOf(movie(1), movie(2))
+    )
+    repository.failedRecommendationId = 1
+
+    val model = viewModel()
+
+    assertTrue(model.uiState.value.loadFailed)
+    assertEquals(
+      listOf(1, 2),
+      repository.recommendationCalls
+    )
+    assertEquals(1, repository.trendingCalls)
+    assertTrue(102 in model.ids())
+
+    // Restore the previously failing recommendation source.
+    repository.failedRecommendationId = null
+    model.retry()
+
+    assertFalse(model.uiState.value.loadFailed)
+
+    // Only source 1 should be fetched again.
+    assertEquals(
+      listOf(1, 2, 1),
+      repository.recommendationCalls
+    )
+
+    // Trending should not be fetched again.
+    assertEquals(1, repository.trendingCalls)
+
+    assertTrue(101 in model.ids())
+    assertTrue(102 in model.ids())
+  }
+
+  @Test
+  fun retryRetainsStaleCacheNoticeForUnretriedSources() = runTest {
+    repository.liked.value = success(listOf(movie(1)))
+    repository.failedRecommendationId = 1
+
+    repository.trendingResult =
+      RepositoryResult.Success(
+        page(movie(100)),
+        DataSource.CACHE
+      )
+
+    val model = viewModel()
+
+    assertTrue(model.uiState.value.usingCache)
+
+    repository.failedRecommendationId = null
+    model.retry()
+
+    assertFalse(model.uiState.value.loadFailed)
+    assertTrue(model.uiState.value.usingCache)
+
+    // The successful cached source should not be requested again.
+    assertEquals(1, repository.trendingCalls)
+  }
+
 }
 
 private fun movie(id: Int) = Movie(

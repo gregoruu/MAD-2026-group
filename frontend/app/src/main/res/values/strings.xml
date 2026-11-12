@@ -79,4 +79,7 @@
     Your Watch Later list is empty.
 </string>
 
+    <string name="offline_status">Offline</string>
+    <string name="offline_message">Saved movies are still available.</string>
+
 </resources>

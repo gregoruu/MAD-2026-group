@@ -71,8 +71,19 @@ Home retains its Spotlight card and uses the personalized recommendation orchest
 and ranking described below. Watched changes rerank all fetched candidates without
 another TMDB request. Recommendations stay hidden until the
 saved-list snapshot loads successfully, including during retries and storage errors.
-Search retains its query submission, pagination and movie navigation. Connectivity UI
-(#43) and image caching (#48) remain separate features.
+Search retains its query submission, pagination and movie navigation. Connectivity monitoring and offline UI are implemented under issue #43.
+AndroidNetworkMonitor observes the default network and checks whether
+it has validated internet connectivity. The application displays an
+accessible offline banner when connectivity is unavailable.
+
+The offline banner does not prevent navigation or hide locally saved
+movies. Network-dependent screens retain their existing error handling
+and provide request-specific retry actions. The repository uses validated
+cached TMDB responses when a recoverable network request fails.
+
+Home tracks failed recommendation sources independently, preserving
+successful recommendation batches and retrying only failed sources when
+the user's preferences, Likes, and request date have not changed.
 
 Write failures preserve the last Room snapshot and leave recommendations and list
 actions available. The store emits one feedback event per failed write or confirmed
