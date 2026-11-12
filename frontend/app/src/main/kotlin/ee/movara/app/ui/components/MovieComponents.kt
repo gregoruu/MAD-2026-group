@@ -377,7 +377,8 @@ fun GenreTile(
 fun MovieRow(
     movie: Movie,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    actions: (@Composable () -> Unit)? = null
 ) {
     Card(
         onClick = onClick,
@@ -423,6 +424,7 @@ fun MovieRow(
                         color = MovaraTextSecondary
                     )
                 }
+                actions?.invoke()
             }
 
             Spacer(Modifier.width(12.dp))
