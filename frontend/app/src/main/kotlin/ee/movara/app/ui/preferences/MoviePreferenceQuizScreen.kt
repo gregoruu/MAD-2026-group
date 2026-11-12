@@ -234,25 +234,23 @@ private fun GenreChoices(state: MoviePreferenceQuizState, enabled: Boolean, acti
         verticalArrangement = Arrangement.spacedBy(8.dp)
       ) {
         GenreCatalog.genres.forEach { genre ->
-          FilterChip(
+          QuizChip(
+            label = genre.name,
             selected = genre.id in state.genreIds,
-            onClick = { actions.toggleGenre(genre.id) },
             enabled = enabled && (
               genre.id in state.genreIds || state.genreIds.size < MovieTastePreferences.MAX_GENRES
             ),
-            label = { Text(genre.name) },
-            modifier = Modifier.heightIn(min = 48.dp)
+            onClick = { actions.toggleGenre(genre.id) }
           )
         }
       }
     }
     item {
-      FilterChip(
+      QuizChip(
+        label = stringResource(R.string.quiz_no_preference),
         selected = state.genreIds.isEmpty(),
-        onClick = actions.clearGenres,
         enabled = enabled,
-        label = { Text(stringResource(R.string.quiz_no_preference)) },
-        modifier = Modifier.heightIn(min = 48.dp)
+        onClick = actions.clearGenres
       )
     }
     item {
@@ -362,6 +360,37 @@ private fun FavouriteChoices(
   }
 }
 
+// Filter chip of the quiz, at least 48 dp high.
+// A selected chip gets a check mark, so the choice is not shown by colour alone.
+// The room for the mark is always kept, so the chip keeps its width and the
+// row does not reflow when a chip is toggled.
+@Composable
+private fun QuizChip(
+  label: String,
+  selected: Boolean,
+  enabled: Boolean,
+  onClick: () -> Unit
+) {
+  FilterChip(
+    selected = selected,
+    onClick = onClick,
+    enabled = enabled,
+    label = { Text(label) },
+    leadingIcon = {
+      if (selected) {
+        Icon(
+          painter = painterResource(R.drawable.ic_ui_check),
+          contentDescription = null,
+          modifier = Modifier.size(FilterChipDefaults.IconSize)
+        )
+      } else {
+        Spacer(Modifier.size(FilterChipDefaults.IconSize))
+      }
+    },
+    modifier = Modifier.heightIn(min = 48.dp)
+  )
+}
+
 @Composable
 private fun FavouriteMovieCard(
   movie: Movie,
@@ -418,15 +447,17 @@ private fun RatingChoices(state: MoviePreferenceQuizState, enabled: Boolean, act
         verticalArrangement = Arrangement.spacedBy(8.dp)
       ) {
         listOf(null, 6, 7, 8).forEach { rating ->
-          FilterChip(
+          val ratingLabel = if (rating == null) {
+            stringResource(R.string.quiz_rating_any)
+          } else {
+            stringResource(R.string.quiz_rating_value, rating)
+          }
+
+          QuizChip(
+            label = ratingLabel,
             selected = state.minimumRating == rating,
-            onClick = { actions.ratingSelected(rating) },
             enabled = enabled,
-            label = {
-              Text(if (rating == null) stringResource(R.string.quiz_rating_any)
-                else stringResource(R.string.quiz_rating_value, rating))
-            },
-            modifier = Modifier.heightIn(min = 48.dp)
+            onClick = { actions.ratingSelected(rating) }
           )
         }
       }

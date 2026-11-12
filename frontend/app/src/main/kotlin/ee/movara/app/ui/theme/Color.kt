@@ -28,3 +28,7 @@ val MovaraLiked = Color(0xFFE63946)
 val MovaraWatched = Color(0xFF3A8F5F)
 val MovaraBorder = Color(0xFF1C1F30)
 val MovaraSurfaceSecondary = Color(0xFF161929)
+
+// Behind text drawn on an image. Strong enough for AA contrast even on a white image;
+// ContrastTest checks the colour itself. Modifier.textScrim puts the text on it.
+val MovaraScrim = MovaraBackground.copy(alpha = 0.85f)

@@ -70,6 +70,10 @@
 
     <string name="genres_empty">Genres are unavailable right now.</string>
     <string name="my_movies_empty_liked">You have not liked any movies yet.</string>
+    <string name="my_movies_title">My Movies</string>
+    <string name="my_movies_loading">Loading your movies</string>
+    <string name="my_movies_storage_error">Could not read your saved movies. Please try again.</string>
+    <string name="my_movies_remove">Remove %1$s from Watch Later</string>
     <string name="my_movies_empty_watched">You have not marked any movies as watched yet.</string>
     <string name="my_movies_empty_watch_later">
     Your Watch Later list is empty.

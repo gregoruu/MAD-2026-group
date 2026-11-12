@@ -37,8 +37,12 @@ WCAG AA requires at least 4.5:1 for normal text and 3:1 for large text, buttons 
 | Near-black text on gold button | 10.7:1 | Pass |
 | Near-black text on red button | 4.8:1 | Pass |
 | Near-black text on green button | 5.0:1 | Pass |
+| Off-white on the image scrim, white image | 11.8:1 | Pass |
+| Light grey on the image scrim, white image | 5.6:1 | Pass |
+| Gold on the image scrim, white image | 7.3:1 | Pass |
 
 The gold, red and green buttons always use dark text (`#07090F`).
+Text on a poster or backdrop sits on the image scrim: the background colour at 85 % opacity.
 
 ---
 
@@ -78,14 +82,14 @@ Two Google Fonts (SIL Open Font License): **Barlow Condensed** for titles (weigh
 
 | Element | Size |
 |---|---|
-| Bottom navigation bar | 80 dp high |
+| Bottom navigation bar | at least 80 dp high, above the system navigation inset |
 | Navigation rail (larger screens) | 80 dp wide |
 | Buttons, tabs and list rows | at least 48 dp high |
 | Touch area of every clickable element | at least 48 × 48 dp |
 | Search field | 52 dp high |
-| Spotlight card on Home | 62 % of the screen height |
+| Spotlight card on Home | 62 % of the screen height; taller on a phone when a larger font needs it |
 | Movie cards in recommendation rails | 144 × 208 dp |
-| Genre tiles | 112 dp high |
+| Genre tiles | 112 dp high; taller with a larger font, so a two-line name fits |
 | Posters in My Movies | 64 × 96 dp |
 
 ---
@@ -117,15 +121,15 @@ Material Symbols (Apache License 2.0), added in Android Studio with **Vector Ass
 
 | Component | Compose component | Size | States |
 |---|---|---|---|
-| Bottom navigation bar | `NavigationBar` | 80 dp high, 3 items | Selected: gold filled icon, gold label, small gold dot. Unselected: light grey outline icon and label |
+| Bottom navigation bar | `NavigationBar` | At least 80 dp high, 3 items | Selected: gold filled icon, gold label, small gold dot. Unselected: light grey outline icon and label |
 | Navigation rail | `NavigationRail` | 80 dp wide | Same as bottom navigation bar |
 | Search field | `TextField` | 52 dp high, radius 16 | Empty: placeholder "Search movies by title". Focused: gold border. With text: clear button |
-| Spotlight card | `Card` | 62 % of screen height, radius 24 | Pressed: ripple |
+| Spotlight card | `Card` | At least 62 % of screen height, radius 24 | Pressed: ripple |
 | Movie card | `Card` | Poster 2:3, radius 8–12 | Pressed: ripple. Missing poster: dark box with movie icon |
-| Genre tile | `Card` | 112 dp high, radius 12 | Pressed: ripple |
+| Genre tile | `Card` | At least 112 dp high, radius 12 | Pressed: ripple |
 | Tabs (My Movies) | `SegmentedButton` | 48 dp high | Selected: gold background, dark text. Unselected: light grey text. Shows the number of movies |
 | Movie row (My Movies) | `Card` | Full width, poster 64 × 96 | Pressed: ripple |
-| Action buttons (Like, Watch Later, Mark Watched) | `FilledTonalButton` | 48 dp high, pill | Off: dark navy, light grey text, outline icon. On: Like red, Watch Later gold, Watched green, dark text, filled icon |
+| Action buttons (Like, Watch Later, Mark Watched) | `FilledTonalButton` | At least 48 dp high, radius 24 (a pill at 48 dp); the label wraps with a larger font | Off: dark navy, light grey text, outline icon. On: Like red, Watch Later gold, Watched green, dark text, filled icon |
 | Icon buttons (search, back, info) | `IconButton` | 48 dp touch area | Pressed: ripple |
 | Snackbar | `Snackbar` | Material 3 default | Shown after adding or removing a movie; "Undo" when a movie is removed |
 | Loading placeholder | custom | Same size as the element | Grey shape that slowly pulses |
@@ -217,4 +221,4 @@ The ranking, request limits and refresh/cache behaviour are specified in
 - Every clickable element has a touch area of at least 48 × 48 dp.
 - All main colour pairs meet WCAG 2.1 AA (see the contrast table above).
 - All text is in sp and follows the phone's font size setting; the smallest text is 12 sp. With a larger font, text wraps and rows grow instead of cutting text.
-- Selected states are never shown only with colour: icons change from outline to filled and labels change, for example "Liked".
+- Selected states are never shown only with colour: icons change from outline to filled and labels change, for example "Liked". A selected filter chip gets a check mark.

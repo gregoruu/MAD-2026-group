@@ -247,3 +247,27 @@ Repository tests cover network errors, unavailable or
 corrupt caches, invalid responses and database failures.
 ViewModel tests cover error recovery and retry behaviour.
 Home tests additionally verify targeted recommendation retries.
+## My Movies (#37)
+
+My Movies observes the shared Room list snapshot, with the newest additions first.
+Each tab shows its count and keeps its own scroll position. Tapping a row opens
+Movie Details; the info button opens About. Watch Later rows offer Mark Watched
+and Remove. Mark Watched atomically moves the film out of Watch Later, and removing
+a film offers Undo in the shared snackbar. Pending writes disable both row actions.
+Empty lists, loading and local storage failures have separate views; storage
+failures offer Try again. Lists and their actions work without internet. Posters
+use the image cache when available and a placeholder otherwise.
+
+On an emulator or connected device, run the screen and Room checks with:
+
+```sh
+./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=ee.movara.app.ui.movies.SavedMoviesScreenTest,ee.movara.app.data.repository.MovieRepositoryRoomTest
+```
+
+The screen tests cover counts and tab switching, two columns at medium width,
+marking watched, removing without opening details, disabled pending actions,
+empty/loading/error views, About and selected-tab restoration. For a manual check,
+save films from Movie Details, then reopen My Movies in airplane mode. Verify the
+list order, Watch Later actions and Undo, and that opening a film and returning
+preserves the tab and scroll position. Repeat at 700 dp width and with larger text.
+
