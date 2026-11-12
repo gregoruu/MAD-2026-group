@@ -67,47 +67,80 @@ import ee.movara.app.ui.selectedgenre.SelectedGenreViewModelFactory
 import ee.movara.app.ui.moviedetails.MovieDetailsRouteContent
 import ee.movara.app.ui.moviedetails.MovieDetailsViewModel
 import ee.movara.app.ui.components.OfflineBanner
-
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.statusBars
 
 // Main navigation structure of application.
 // Defines the three primary destinations: Home, Genres and My Movies.
 // Also provides navigation to secondary screens such as Search, Selected Genre, Movie Details and About.
+
 @Composable
 fun MainNavigation(container: AppContainer) {
-  val startup = viewModel { PreferenceStartupViewModel(container.movieTasteRepository) }
+  val startup = viewModel {
+    PreferenceStartupViewModel(container.movieTasteRepository)
+  }
+
   val startupState by startup.uiState.collectAsStateWithLifecycle()
-  when (startupState) {
-    PreferenceStartupState.LOADING, PreferenceStartupState.ERROR -> PreferenceStartupScreen(
-      loading = startupState == PreferenceStartupState.LOADING,
-      onRetry = startup::retry,
-      onContinue = startup::enterApp
-    )
-    PreferenceStartupState.QUIZ -> {
-      val quiz: MoviePreferenceQuizViewModel = viewModel(
-        key = "firstLaunchQuiz",
-        factory = viewModelFactory {
-          initializer {
-            MoviePreferenceQuizViewModel(
-              container.movieTasteRepository, container.movieRepository, createSavedStateHandle()
-            )
-          }
-        }
-      )
-      MoviePreferenceQuizScreen(
-        viewModel = quiz,
-        isEditing = false,
-        onFinished = startup::enterApp,
-        onCancel = startup::enterApp
-      )
+
+  val isOnline by container.networkMonitor.isOnline
+    .collectAsStateWithLifecycle(initialValue = true)
+
+  Column(modifier = Modifier.fillMaxSize()) {
+    if (!isOnline) {
+      OfflineBanner()
     }
-    PreferenceStartupState.READY -> AppNavigation(container)
+
+    Box(
+      modifier = Modifier
+        .weight(1f)
+        .then(
+          if (!isOnline) {
+            Modifier.consumeWindowInsets(WindowInsets.statusBars)
+          } else {
+            Modifier
+          }
+        )
+    ) {
+      when (startupState) {
+        PreferenceStartupState.LOADING,
+        PreferenceStartupState.ERROR -> PreferenceStartupScreen(
+          loading = startupState == PreferenceStartupState.LOADING,
+          onRetry = startup::retry,
+          onContinue = startup::enterApp
+        )
+
+        PreferenceStartupState.QUIZ -> {
+          val quiz: MoviePreferenceQuizViewModel = viewModel(
+            key = "firstLaunchQuiz",
+            factory = viewModelFactory {
+              initializer {
+                MoviePreferenceQuizViewModel(
+                  container.movieTasteRepository,
+                  container.movieRepository,
+                  createSavedStateHandle()
+                )
+              }
+            }
+          )
+
+          MoviePreferenceQuizScreen(
+            viewModel = quiz,
+            isEditing = false,
+            onFinished = startup::enterApp,
+            onCancel = startup::enterApp
+          )
+        }
+
+        PreferenceStartupState.READY -> AppNavigation(container)
+      }
+    }
   }
 }
 
+
 @Composable
 private fun AppNavigation(container: AppContainer) {
-  val isOnline by container.networkMonitor.isOnline
-    .collectAsStateWithLifecycle(initialValue = true)
   val navController = rememberNavController()
   val movieLists: MovieListsViewModel = viewModel { MovieListsViewModel(container.movieRepository) }
   val listsState by movieLists.uiState.collectAsStateWithLifecycle()
@@ -135,11 +168,6 @@ private fun AppNavigation(container: AppContainer) {
 //Shared layout and bottom navigation bar
 
     Scaffold(
-      topBar = {
-        if (!isOnline) {
-          OfflineBanner()
-        }
-      },
       snackbarHost = { SnackbarHost(snackbarHost) },
       bottomBar = {
       val hideBottomBar =
