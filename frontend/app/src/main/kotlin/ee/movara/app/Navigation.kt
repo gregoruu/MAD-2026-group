@@ -65,7 +65,7 @@ import ee.movara.app.ui.selectedgenre.SelectedGenreViewModel
 import ee.movara.app.ui.selectedgenre.SelectedGenreViewModelFactory
 import ee.movara.app.ui.moviedetails.MovieDetailsRouteContent
 import ee.movara.app.ui.moviedetails.MovieDetailsViewModel
-
+import ee.movara.app.ui.components.MovaraSnackbar
 
 // Main navigation structure of application.
 // Defines the three primary destinations: Home, Genres and My Movies.
@@ -129,8 +129,13 @@ private fun AppNavigation(container: AppContainer) {
     navController.currentBackStackEntryAsState().value?.destination
 
 //Shared layout and bottom navigation bar
+
   Scaffold(
-    snackbarHost = { SnackbarHost(snackbarHost) },
+    snackbarHost = {
+      SnackbarHost(hostState = snackbarHost) { data ->
+        MovaraSnackbar(data)
+      }
+    },
     bottomBar = {
       val hideBottomBar =
         currentDestination?.hasRoute<AboutRoute>() == true ||
