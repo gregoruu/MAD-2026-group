@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.unit.sp
 import ee.movara.app.R
 import ee.movara.app.domain.model.Genre
@@ -24,6 +25,7 @@ import ee.movara.app.domain.model.MovieDetails
 import ee.movara.app.ui.components.MovieAction
 import ee.movara.app.ui.components.MovieActionButton
 import ee.movara.app.ui.components.TmdbImage
+import ee.movara.app.ui.components.textScrim
 import ee.movara.app.ui.theme.*
 import java.util.Locale
 
@@ -123,6 +125,12 @@ fun MovieDetailsScreen(
     }
 }
 
+// The back button of the hero and the room it takes at the top of the image.
+// The fade above the phone title is that tall, so the title never runs under the button.
+private val HeroBackButtonMargin = 12.dp
+private val HeroBackButtonSize = 48.dp
+private val HeroTitleFade = HeroBackButtonMargin * 2 + HeroBackButtonSize
+
 // Header with image, gradient and back button
 @Composable
 private fun MovieHero(
@@ -142,27 +150,40 @@ private fun MovieHero(
             size = "w780"
         )
 
-        // Gradient for readability
+        // Gradient for readability.
+        // On the phone the title brings its own scrim, so the image only gets
+        // a short fade into the page background at its bottom edge.
+        val heroGradient = if (usePoster) {
+            Brush.verticalGradient(
+                colors = listOf(
+                    Color.Black.copy(alpha = 0.45f),
+                    Color.Transparent,
+                    MovaraBackground.copy(alpha = 0.95f)
+                )
+            )
+        } else {
+            Brush.verticalGradient(
+                0f to Color.Black.copy(alpha = 0.45f),
+                0.5f to Color.Transparent,
+                0.85f to Color.Transparent,
+                1f to MovaraBackground
+            )
+        }
+
         Box(
             modifier = Modifier
                 .matchParentSize()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            Color.Black.copy(alpha = 0.45f),
-                            Color.Transparent,
-                            MovaraBackground.copy(alpha = 0.95f)
-                        )
-                    )
-                )
+                .background(heroGradient)
         )
 
+        // Drawn above the title's fade, but still first in the reading order.
         IconButton(
             onClick = onBack,
             modifier = Modifier
                 .align(Alignment.TopStart)
-                .padding(12.dp)
-                .size(48.dp)
+                .zIndex(1f)
+                .padding(HeroBackButtonMargin)
+                .size(HeroBackButtonSize)
                 .background(
                     color = Color.Black.copy(alpha = 0.35f),
                     shape = CircleShape
@@ -179,16 +200,19 @@ private fun MovieHero(
         }
 
         if (!usePoster) {
+            // The scrim belongs to the title, so a long title stays readable on a bright image.
+            // The fade above the title also keeps it below the back button.
             Text(
                 text = movie.title,
                 style = MaterialTheme.typography.displayLarge,
-                color = Color.White,
+                color = MovaraText,
                 modifier = Modifier
                     .align(Alignment.BottomStart)
+                    .fillMaxWidth()
+                    .textScrim(fade = HeroTitleFade)
                     .padding(
                         start = 20.dp,
                         end = 20.dp,
-                        top = 72.dp,
                         bottom = 16.dp
                     )
             )

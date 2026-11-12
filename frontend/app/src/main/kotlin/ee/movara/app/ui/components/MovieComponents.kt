@@ -27,10 +27,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -40,7 +39,6 @@ import coil3.compose.SubcomposeAsyncImage
 import ee.movara.app.R
 import ee.movara.app.domain.model.Genre
 import ee.movara.app.domain.model.Movie
-import ee.movara.app.ui.theme.MovaraBackground
 import ee.movara.app.ui.theme.MovaraBorder
 import ee.movara.app.ui.theme.MovaraGold
 import ee.movara.app.ui.theme.MovaraSurface
@@ -138,19 +136,12 @@ fun MovieCard(
                 size = "w342"
             )
 
-            Box(
-                Modifier.matchParentSize().background(
-                    Brush.verticalGradient(
-                        0f to Color.Transparent,
-                        0.42f to Color.Transparent,
-                        1f to MovaraBackground
-                    )
-                )
-            )
-
+            // The scrim belongs to the text block, so it covers the title at any font size.
             Column(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
+                    .fillMaxWidth()
+                    .textScrim(fade = 16.dp)
                     .padding(10.dp),
                 verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
@@ -174,7 +165,13 @@ fun MovieCard(
     }
 }
 
-// SpotlightCard: 62% of screen height
+// The phone Spotlight card grows with its text, so a long title gets more lines there.
+// The wide card has a fixed height and keeps the title short.
+private const val SPOTLIGHT_PHONE_TITLE_MAX_LINES = 4
+private const val SPOTLIGHT_WIDE_TITLE_MAX_LINES = 2
+
+// SpotlightCard: 62% of screen height.
+// The phone layout grows past that when a large font needs more room.
 @Composable
 fun SpotlightCard(
     movie: Movie,
@@ -187,9 +184,17 @@ fun SpotlightCard(
     val targetHeight = height
         ?: (LocalConfiguration.current.screenHeightDp.dp * 0.62f)
 
+    // The wide layout scrolls inside the card, so it keeps a fixed height.
+    // The phone layout sets its own minimum height on the text column below.
+    val heightModifier = if (horizontal) {
+        Modifier.height(targetHeight)
+    } else {
+        Modifier
+    }
+
     Card(
         onClick = onClick,
-        modifier = modifier.fillMaxWidth().height(targetHeight),
+        modifier = modifier.fillMaxWidth().then(heightModifier),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(
             containerColor = MovaraSurface
@@ -208,104 +213,116 @@ fun SpotlightCard(
                         .verticalScroll(rememberScrollState()).padding(24.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+                    // Plain label: here it sits on the card surface, not on the poster.
                     Text(
                         text = "TOP PICK",
                         color = MovaraGold,
                         style = MaterialTheme.typography.labelMedium
                     )
-                    Text(
-                        text = movie.title,
-                        style = MaterialTheme.typography.displayLarge,
-                        color = MovaraText,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    movie.releaseYear?.let { year ->
-                        Text(
-                            text = "$year",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MovaraTextSecondary
-                        )
-                    }
-                    actions?.invoke()
-                    androidx.compose.material3.TextButton(
+                    SpotlightText(
+                        movie = movie,
                         onClick = onClick,
-                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 0.dp)
-                    ) {
-                        Text(
-                            text = androidx.compose.ui.res.stringResource(R.string.home_see_details),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MovaraGold
-                        )
-                    }
+                        actions = actions,
+                        titleMaxLines = SPOTLIGHT_WIDE_TITLE_MAX_LINES
+                    )
                 }
             }
-        } else Box(Modifier.fillMaxSize()) {
+        } else Box(Modifier.fillMaxWidth()) {
             TmdbImage(
                 movie.posterPath,
                 modifier = Modifier.matchParentSize(),
                 size = "w500"
             )
 
-            Box(
-                Modifier.matchParentSize().background(
-                    Brush.verticalGradient(
-                        0f to Color.Transparent,
-                        0.35f to Color.Transparent,
-                        1f to MovaraBackground
-                    )
-                )
-            )
-
-            Text(
-                text = "TOP PICK",
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .padding(20.dp),
-                color = MovaraGold,
-                style = MaterialTheme.typography.labelMedium
-            )
-
+            // The badge and the text block share one column, so they never overlap
+            // when the text block grows.
             Column(
                 modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                    .fillMaxWidth()
+                    .heightIn(min = targetHeight),
+                verticalArrangement = Arrangement.SpaceBetween
             ) {
+                // The badge has its own dark background because the poster behind it is unknown.
                 Text(
-                    text = movie.title,
-                    style = MaterialTheme.typography.displayLarge,
-                    color = MovaraText,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
+                    text = "TOP PICK",
+                    modifier = Modifier
+                        .padding(20.dp)
+                        .background(
+                            color = MovaraScrim,
+                            shape = PillShape
+                        )
+                        .padding(horizontal = 10.dp, vertical = 4.dp),
+                    color = MovaraGold,
+                    style = MaterialTheme.typography.labelMedium
                 )
 
-                movie.releaseYear?.let { year ->
-                    Text(
-                        text = "$year",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MovaraTextSecondary
-                    )
-                }
-
-                actions?.invoke()
-
-                androidx.compose.material3.TextButton(
+                // The scrim belongs to the text block and covers it at any font size.
+                // The year and the details link sit on the poster too, so they need it as well.
+                SpotlightText(
+                    movie = movie,
                     onClick = onClick,
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 0.dp)
-                ) {
-                    Text(
-                        text = androidx.compose.ui.res.stringResource(R.string.home_see_details),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MovaraGold
-                    )
-                }
+                    actions = actions,
+                    titleMaxLines = SPOTLIGHT_PHONE_TITLE_MAX_LINES,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .textScrim(fade = 64.dp)
+                        .padding(start = 20.dp, end = 20.dp, bottom = 20.dp)
+                )
             }
         }
     }
 }
 
-// GenreTile: 112 dp high
+// Title, year, action buttons and the details link, shared by both Spotlight layouts.
+@Composable
+private fun SpotlightText(
+    movie: Movie,
+    onClick: () -> Unit,
+    actions: (@Composable () -> Unit)?,
+    titleMaxLines: Int,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(
+            text = movie.title,
+            style = MaterialTheme.typography.displayLarge,
+            color = MovaraText,
+            maxLines = titleMaxLines,
+            overflow = TextOverflow.Ellipsis
+        )
+
+        movie.releaseYear?.let { year ->
+            Text(
+                text = "$year",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MovaraTextSecondary
+            )
+        }
+
+        actions?.invoke()
+
+        androidx.compose.material3.TextButton(
+            onClick = onClick,
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 0.dp)
+        ) {
+            Text(
+                text = androidx.compose.ui.res.stringResource(R.string.home_see_details),
+                style = MaterialTheme.typography.labelMedium,
+                color = MovaraGold
+            )
+        }
+    }
+}
+
+// GenreTile: 112 dp high. With a large font every tile gets the height of a
+// two-line name, so the rows of the grid stay even.
+
+// Padding around the genre name and the scrim fade above it; the tile height uses both.
+private val GenreNamePadding = 12.dp
+private val GenreNameFade = 24.dp
 
 @Composable
 fun GenreTile(
@@ -315,11 +332,25 @@ fun GenreTile(
     modifier: Modifier = Modifier,
     imageRes: Int? = null
 ) {
+    val nameStyle = MaterialTheme.typography.titleLarge
+    // Converted to dp first: font scaling is not linear, so twice the sp value
+    // is not twice the height.
+    // A style without a line height in sp falls back to the 112 dp minimum.
+    val nameLineHeight = if (nameStyle.lineHeight.isSp) {
+        with(LocalDensity.current) {
+            nameStyle.lineHeight.toDp()
+        }
+    } else {
+        0.dp
+    }
+    // Two lines of the name, the padding around them and the fade above.
+    val tileHeight = maxOf(112.dp, nameLineHeight * 2 + GenreNamePadding * 2 + GenreNameFade)
+
     Card(
         onClick = onClick,
         modifier = modifier
             .fillMaxWidth()
-            .height(112.dp),
+            .height(tileHeight),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
             containerColor = MovaraSurface
@@ -330,9 +361,13 @@ fun GenreTile(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.BottomStart
         ) {
-// Prefer local images so genre tiles also work offline.
+            // One answer for both the image below and the scrim behind the name.
+            val hasLocalImage = imageRes != null
+            val hasRemoteImage = !imageUrl.isNullOrBlank()
+
+            // Prefer local images so genre tiles also work offline.
             when {
-                imageRes != null -> {
+                hasLocalImage -> {
                     Image(
                         painter = painterResource(imageRes),
                         contentDescription = null,
@@ -341,7 +376,7 @@ fun GenreTile(
                     )
                 }
 
-                !imageUrl.isNullOrBlank() -> {
+                hasRemoteImage -> {
                     MovieImage(
                         model = imageUrl.trim(),
                         modifier = Modifier.matchParentSize()
@@ -349,21 +384,22 @@ fun GenreTile(
                 }
             }
 
-            Box(
+            // The scrim belongs to the name, so it also covers a two-line name.
+            // It is the only dark layer on the image. A tile without an image
+            // shows the plain card surface and needs no scrim.
+            val scrimModifier = if (hasLocalImage || hasRemoteImage) {
+                Modifier.textScrim(fade = GenreNameFade)
+            } else {
                 Modifier
-                    .matchParentSize()
-                    .background(
-                        Brush.verticalGradient(
-                            0f to MovaraBackground.copy(alpha = 0.10f),
-                            1f to MovaraBackground.copy(alpha = 0.85f)
-                        )
-                    )
-            )
+            }
 
             Text(
                 text = genre.name,
-                modifier = Modifier.padding(12.dp),
-                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .then(scrimModifier)
+                    .padding(GenreNamePadding),
+                style = nameStyle,
                 color = MovaraText,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
