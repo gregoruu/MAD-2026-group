@@ -133,13 +133,29 @@ internal fun HomeContent(
           }
         }
       } else {
+
         if (state.usingCache) {
           item(key = "cache") {
-            Text(
-              stringResource(R.string.home_cached),
-              Modifier.padding(horizontal = screenMargin),
-              style = MaterialTheme.typography.bodySmall
-            )
+            Row(
+              modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = screenMargin),
+              verticalAlignment = Alignment.CenterVertically,
+              horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+              Text(
+                text = stringResource(R.string.home_cached),
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+              )
+              if (!state.loadFailed) {
+                TextButton(onClick = onRetry) {
+                  Text(stringResource(R.string.home_retry))
+                }
+              }
+
+            }
           }
         }
         if (state.loadFailed) {
