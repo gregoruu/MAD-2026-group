@@ -65,6 +65,7 @@ import ee.movara.app.ui.selectedgenre.SelectedGenreViewModel
 import ee.movara.app.ui.selectedgenre.SelectedGenreViewModelFactory
 import ee.movara.app.ui.moviedetails.MovieDetailsRouteContent
 import ee.movara.app.ui.moviedetails.MovieDetailsViewModel
+import ee.movara.app.ui.components.MovaraSnackbar
 import ee.movara.app.ui.components.OfflineBanner
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.WindowInsets
@@ -166,9 +167,13 @@ private fun AppNavigation(container: AppContainer) {
 
 //Shared layout and bottom navigation bar
 
-    Scaffold(
-      snackbarHost = { SnackbarHost(snackbarHost) },
-      bottomBar = {
+  Scaffold(
+    snackbarHost = {
+      SnackbarHost(hostState = snackbarHost) { data ->
+        MovaraSnackbar(data)
+      }
+    },
+    bottomBar = {
       val hideBottomBar =
         currentDestination?.hasRoute<AboutRoute>() == true ||
           currentDestination?.hasRoute<MovieDetailsRoute>() == true ||
