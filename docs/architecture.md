@@ -451,7 +451,7 @@ The app declares two Android platform permissions:
 
 | Permission | Purpose |
 | --- | --- |
-| `INTERNET` | Request movie metadata through the Worker and images from TMDB's image service |
+| `INTERNET` | Request movie metadata/images and send staging/release crash diagnostics to Firebase |
 | `ACCESS_NETWORK_STATE` | Allow connectivity checks for offline handling |
 
 Both are normal, install-time permissions. No runtime permission dialog is needed.
@@ -495,13 +495,58 @@ Image requests go directly to TMDB's image service, which receives the device's
 connection metadata. The TMDB key authorizes public API access and is not a user's
 login credential.
 
-The current app dependencies contain no analytics, advertising or crash-reporting SDK.
-Genre artwork, fonts and the TMDB logo are bundled resources. About's attribution
+Debug contains no Firebase SDK. Staging and release include Firebase Crashlytics
+for diagnostics, as described below; Google Analytics and advertising SDKs are not
+included. Genre artwork, fonts and the TMDB logo are bundled resources. About's attribution
 and licence links open external sites through `LocalUriHandler` when tapped, so
 those visits are subject to the destination/browser's handling. Debug and staging
 HTTP BODY logging can expose search terms, movie IDs and responses in development
 logs, even though the TMDB key is absent. Repository code cannot establish
 Cloudflare/TMDB retention policies or live account-level logging settings.
+
+### Android crash reporting
+
+Staging and release include Firebase Crashlytics, initialized automatically by its
+Firebase content provider before the application starts. Debug has no Crashlytics
+dependency, so its shared package name with release cannot send debug crashes to
+the production registration. The manifest also explicitly disables collection in
+debug and enables it in staging/release; there is no runtime collection override.
+
+Reports go directly from the device to Firebase project `movara-a9a67`, using
+separate Android registrations for `ee.movara.app.staging` and `ee.movara.app`.
+The Cloudflare Worker does not receive or store Android crash reports.
+The Google services plugin selects the matching client from the generated,
+committed `frontend/app/google-services.json`. These are public client identifiers,
+not backend credentials. No Movara account is required.
+
+Collection is automatic in staging/release. The SDK can record fatal crashes and
+supported ANRs; crash reports are sent when the app next starts with connectivity.
+Diagnostic data includes stack traces and exception messages, app state/version,
+device/OS metadata and a Crashlytics installation UUID. Transitive Firebase
+Installations and Sessions SDKs also handle installation/session identifiers and
+associated metadata. These reports must not be described as containing no personal
+data. See [Firebase's SDK data disclosures](https://firebase.google.com/docs/android/play-data-disclosure#crashlytics)
+for the current collection details and linked Installations/Sessions sections.
+
+Movara does not set a user ID, attach custom logs/keys, forward HTTP BODY logs or
+record handled exceptions as non-fatal reports. Do not put search text, movie
+preferences, saved lists, API keys or complete requests/responses in diagnostic
+messages. Exception messages are part of reports too. Ordinary offline/network
+failures retain the existing repository/UI handling.
+
+The collection policy is automatic diagnostics in staging/release with no in-app
+opt-in or opt-out control at present. It does not upload the Room lists or DataStore
+profile. Before public distribution, reflect the actual SDK data collection in the
+user-facing privacy information and any applicable store disclosures. Console
+access follows the team's Firebase project permissions.
+
+R8 source/line attributes are preserved, and the Crashlytics Gradle plugin uploads
+the exact build's mapping for staging/release. Verification-only CI explicitly skips
+uploads with `-PuploadCrashlyticsMapping=false`; this does not change runtime
+collection. Distributed builds must keep uploads enabled. See the
+[setup and verification steps](../frontend/README.md#crash-reporting-49).
+A passing build is not evidence that Firebase received a report: verify controlled
+test crashes and remove temporary crash-triggering code before closing #49.
 
 ### Uninstalling, backups and device changes
 

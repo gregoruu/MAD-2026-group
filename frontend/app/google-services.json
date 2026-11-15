@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "72438534184",
+    "project_id": "movara-a9a67",
+    "storage_bucket": "movara-a9a67.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:72438534184:android:ca3f5e5d9acbca3df9e51d",
+        "android_client_info": {
+          "package_name": "ee.movara.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBtvOo4FrYv7JJ5b4K5uCBu85JcKBtSWNY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:72438534184:android:ba9274df1f20f455f9e51d",
+        "android_client_info": {
+          "package_name": "ee.movara.app.staging"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBtvOo4FrYv7JJ5b4K5uCBu85JcKBtSWNY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
