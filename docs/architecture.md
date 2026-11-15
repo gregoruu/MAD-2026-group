@@ -380,23 +380,29 @@ can remain available. Home uses the same proxy endpoints and discovery rules as 
 There are three build types and no product flavors. All use namespace
 `ee.movara.app`, version code 1 and base version name `1.0`.
 
-| Variant | Application ID | Worker environment | HTTP BODY logging | Debuggable | R8 minification / resource shrinking | Signing |
+| Variant | Application ID | Worker environment | HTTP BODY logging | Debuggable | `isMinifyEnabled` / `isShrinkResources` | Signing |
 | --- | --- | --- | --- | --- | --- | --- |
 | `debug` | `ee.movara.app` | staging | on | yes | off / off | local debug keystore |
 | `staging` | `ee.movara.app.staging` | staging | on | yes | on / on | local debug keystore, inherited from debug |
 | `release` | `ee.movara.app` | production | off | no | on / on | release keystore only when configured; otherwise unsigned |
 
 Staging uses `initWith(debug)`, adds `.staging` to the application ID and
-`-staging` to the version name, and deliberately enables both shrinking options.
-This lets the team exercise R8 before release while retaining logging/debuggability.
+`-staging` to the version name, and enables `isMinifyEnabled` and
+`isShrinkResources` while keeping `isDebuggable = true`. This allows testing
+shrinking with logging and debugger access, but does not reproduce release R8
+behavior: obfuscation and code optimization are limited in a debuggable build.
+Passing staging tests therefore does not validate release optimization or all
+keep-rule requirements. Test a non-debuggable release build to verify those.
 Staging installs alongside the main app with its own local data. Debug and release
 share an ID; installing one over the other also depends on compatible signatures.
 Staging does not inherit `debugImplementation` Compose tooling dependencies.
 
-Both shrunk variants use `proguard-android-optimize.txt` and
-`frontend/app/proguard-rules.pro`. Their obfuscated stack traces require the
-matching `frontend/app/build/outputs/mapping/<variant>/mapping.txt`.
-Use debug for Compose tooling and unminified debugging.
+Both variants with shrinking enabled use `proguard-android-optimize.txt` and
+`frontend/app/proguard-rules.pro`; sharing these files does not make their R8
+behavior identical. Obfuscated release stack traces require the matching
+`frontend/app/build/outputs/mapping/release/mapping.txt`. Do not assume staging
+stack traces are obfuscated merely because `isMinifyEnabled` is enabled.
+Use debug for Compose tooling and debugging without shrinking.
 
 `BuildConfig.TMDB_BASE_URL` selects
 `https://movara-tmdb-proxy-staging.movara.workers.dev/` for debug/staging and
