@@ -106,7 +106,7 @@ The app module has three build types. Everyday development uses **debug**. **sta
 
 `staging` has its own application id, so it installs next to a release build on the same device instead of replacing it. Its version name ends in `-staging`.
 
-**Staging is shrunk on purpose.** It is the build the team installs, so it has to be the one that proves R8 works. If only `release` were shrunk, nothing anybody runs would exercise the shrinking rules and a missing keep rule would stay hidden until it was too late to fix. The price is that stack traces from a staging build are obfuscated; the mapping file that decodes them is written to `frontend/app/build/outputs/mapping/staging/`. Use a **debug** build when you need a readable stack trace or the Layout Inspector.
+**Staging has shrinking enabled, but does not fully validate release R8 behavior.** It sets `isMinifyEnabled = true` and `isShrinkResources = true` while retaining `isDebuggable = true` for logging and debugger access. This exercises shrinking, but obfuscation and code optimization are limited in a debuggable build. Test a non-debuggable **release** build to verify full optimization, obfuscation and keep-rule requirements. Do not assume staging stack traces are obfuscated; obfuscated release traces need the matching `frontend/app/build/outputs/mapping/release/mapping.txt`. Use a **debug** build for Compose tooling and debugging without shrinking.
 
 Build them from the command line:
 
@@ -158,7 +158,7 @@ Live Edit requires API 30 or newer; the API 37 emulator meets this requirement. 
 - **No movies load:** run the live tests from section 3. A `500` with `The proxy is not configured.` means the proxy has no `TMDB_API_KEY` secret; a `401` means TMDB rejected the key. Both are fixed in Cloudflare, not in the app; see `backend/README.md`.
 - **`The release build is not signed` / you only get `app-release-unsigned.apk`:** none of the four `RELEASE_*` values are set. See section 6. Debug and staging builds do not need them, so this is expected unless you are preparing a shared build.
 - **`Release signing is incomplete` or `no keystore was found at …`:** some of the four values are set and some are not, or the path does not point at a file. The message names the resolved path and which values are blank. Note that a Windows path must use forward slashes — `local.properties` is read with `java.util.Properties`, which treats `\` as an escape character, so `C:\keys\movara.jks` silently becomes `C:keysmovara.jks`.
-- **Release build crashes where debug works:** only the release build shrinks code, so the cause is usually a missing R8 keep rule. Add it to `frontend/app/proguard-rules.pro` and say in a comment which library needs it.
+- **Release build crashes where debug or staging works:** staging enables shrinking but remains debuggable, so it does not exercise full release optimization and obfuscation. Reproduce the crash in a non-debuggable release build and inspect its stack trace using the matching mapping file. If a missing R8 keep rule is the cause, add a targeted rule to `frontend/app/proguard-rules.pro` and document which library needs it.
 
 ## Image loading
 
