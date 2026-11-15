@@ -3,9 +3,6 @@ package ee.movara.app
 
 import kotlinx.serialization.Serializable
 
-// Temporary starter screen
-@Serializable data object Main
-
 // Main destinations
 @Serializable data object HomeRoute
 @Serializable data object GenresRoute
