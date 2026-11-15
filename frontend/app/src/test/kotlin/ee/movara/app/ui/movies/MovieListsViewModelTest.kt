@@ -108,6 +108,51 @@ class MovieListsViewModelTest {
     assertEquals(2, repository.writes)
   }
 
+  @Test
+  fun addingMovieEmitsOneFeedbackAfterRoomConfirmation() = runTest {
+    val lists = lists()
+
+    val feedback = mutableListOf<MovieListFeedback>()
+
+    backgroundScope.launch(
+      UnconfinedTestDispatcher(testScheduler)
+    ) {
+      lists.feedback.toList(feedback)
+    }
+
+    advanceUntilIdle()
+
+    lists.setMembership(
+      movie,
+      MovieListType.LIKED,
+      true
+    )
+
+    advanceUntilIdle()
+
+    // No confirmation from Room yet.
+    assertTrue(feedback.isEmpty())
+
+    repository.snapshots.value = RepositoryResult.Success(
+      MovieLists(liked = listOf(movie)),
+      DataSource.LOCAL
+    )
+
+    advanceUntilIdle()
+
+    // Exactly one successful feedback event.
+    assertEquals(1, feedback.size)
+
+    val event = feedback.single()
+
+    assertEquals(movie, event.movie)
+    assertEquals(MovieListType.LIKED, event.type)
+    assertTrue(event.selected)
+    assertNull(event.error)
+
+    assertEquals(1, repository.writes)
+  }
+
   @Test fun successfulWriteWaitsForRoomConfirmationAndIgnoresRepeatedTap() = runTest {
     val lists = lists()
     advanceUntilIdle()
