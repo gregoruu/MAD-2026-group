@@ -36,9 +36,7 @@ and repositories to the container; Hilt can replace it if dependency wiring grow
 
 The running app uses `HomeViewModel`, `SearchViewModel`,
 `SelectedGenreViewModel`, `MovieDetailsViewModel`, the preference ViewModels and
-the shared `MovieListsViewModel`. The old `ui/main/MainScreenViewModel` and
-`DataRepository` greeting example remain in source but are not wired into the
-current navigation graph. Mirror production packages under `src/test/kotlin`
+the shared `MovieListsViewModel`. Mirror production packages under `src/test/kotlin`
 and `src/androidTest/kotlin`; use fake repository interfaces for ViewModel tests
 and pass plain state/data to screen UI tests and previews.
 
