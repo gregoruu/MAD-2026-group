@@ -7,9 +7,7 @@ import ee.movara.app.data.local.movieTasteDataStore
 import ee.movara.app.data.remote.TmdbApiService
 import ee.movara.app.data.remote.createTmdbApiService
 import ee.movara.app.data.remote.createTmdbOkHttpClient
-import ee.movara.app.data.repository.DataRepository
 import ee.movara.app.data.repository.DataStoreMovieTasteRepository
-import ee.movara.app.data.repository.DefaultDataRepository
 import ee.movara.app.data.repository.DefaultMovieRepository
 import ee.movara.app.data.repository.MovieRepository
 import ee.movara.app.data.repository.MovieTasteRepository
@@ -44,8 +42,6 @@ class AppContainer(private val context: Context) {
   val movieTasteRepository: MovieTasteRepository by lazy {
     DataStoreMovieTasteRepository(context.applicationContext.movieTasteDataStore)
   }
-
-  val dataRepository: DataRepository by lazy { DefaultDataRepository() }
 
   val networkMonitor: NetworkMonitor by lazy {
     AndroidNetworkMonitor(context.applicationContext)

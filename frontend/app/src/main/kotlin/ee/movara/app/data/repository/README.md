@@ -90,5 +90,3 @@ From the repository root:
 ./gradlew :app:assembleDebug
 ./gradlew :app:connectedDebugAndroidTest
 ```
-
-The starter `DataRepository` remains solely for the greeting example.
