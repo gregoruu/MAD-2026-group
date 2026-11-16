@@ -26,6 +26,8 @@ import ee.movara.app.ui.components.MovieAction
 import ee.movara.app.ui.components.MovieActionButton
 import ee.movara.app.ui.components.TmdbImage
 import ee.movara.app.ui.components.textScrim
+import ee.movara.app.ui.layout.LocalScreenLayout
+import ee.movara.app.ui.layout.ScreenLayoutForAvailableSize
 import ee.movara.app.ui.theme.*
 import java.util.Locale
 
@@ -42,13 +44,15 @@ fun MovieDetailsScreen(
     modifier: Modifier = Modifier,
     actionsEnabled: Boolean = true
 ) {
-    BoxWithConstraints(
+    val layout = LocalScreenLayout.current
+
+    Box(
         modifier = modifier
             .fillMaxSize()
             .background(MovaraBackground)
     ) {
-        val isMediumScreen = maxWidth >= 600.dp
-        val screenPadding = if (isMediumScreen) 24.dp else 20.dp
+        val isMediumScreen = layout.isMedium
+        val screenPadding = layout.screenMargin
 
         Column(
             modifier = Modifier
@@ -433,16 +437,18 @@ private fun MovieDetailsPhonePreview() {
 @Composable
 private fun MovieDetailsMediumPreview() {
     MovaraTheme {
-        MovieDetailsScreen(
-            movie = previewMovie,
-            isLiked = true,
-            isWatchLater = false,
-            isWatched = false,
-            onLikeClick = {},
-            onWatchLaterClick = {},
-            onWatchedClick = {},
-            onBack = {}
-        )
+        ScreenLayoutForAvailableSize {
+            MovieDetailsScreen(
+                movie = previewMovie,
+                isLiked = true,
+                isWatchLater = false,
+                isWatched = false,
+                onLikeClick = {},
+                onWatchLaterClick = {},
+                onWatchedClick = {},
+                onBack = {}
+            )
+        }
     }
 }
 
@@ -483,20 +489,22 @@ private fun MovieDetailsMissingDataPreview() {
 @Composable
 private fun MovieDetailsLongTitlePhonePreview() {
     MovaraTheme {
-        MovieDetailsScreen(
-            movie = previewMovie.copy(
-                title = "The Extraordinary Adventures of a Traveler " +
-                        "Who Crossed the Ocean to Discover the Secret " +
-                        "Hidden Beyond the Mountains"
-            ),
-            isLiked = false,
-            isWatchLater = false,
-            isWatched = false,
-            onLikeClick = {},
-            onWatchLaterClick = {},
-            onWatchedClick = {},
-            onBack = {}
-        )
+        ScreenLayoutForAvailableSize {
+            MovieDetailsScreen(
+                movie = previewMovie.copy(
+                    title = "The Extraordinary Adventures of a Traveler " +
+                            "Who Crossed the Ocean to Discover the Secret " +
+                            "Hidden Beyond the Mountains"
+                ),
+                isLiked = false,
+                isWatchLater = false,
+                isWatched = false,
+                onLikeClick = {},
+                onWatchLaterClick = {},
+                onWatchedClick = {},
+                onBack = {}
+            )
+        }
     }
 }
 
@@ -510,19 +518,21 @@ private fun MovieDetailsLongTitlePhonePreview() {
 @Composable
 private fun MovieDetailsLongTitleMediumPreview() {
     MovaraTheme {
-        MovieDetailsScreen(
-            movie = previewMovie.copy(
-                title = "The Extraordinary Adventures of a Traveler " +
-                        "Who Crossed the Ocean to Discover the Secret " +
-                        "Hidden Beyond the Mountains"
-            ),
-            isLiked = false,
-            isWatchLater = false,
-            isWatched = false,
-            onLikeClick = {},
-            onWatchLaterClick = {},
-            onWatchedClick = {},
-            onBack = {}
-        )
+        ScreenLayoutForAvailableSize {
+            MovieDetailsScreen(
+                movie = previewMovie.copy(
+                    title = "The Extraordinary Adventures of a Traveler " +
+                            "Who Crossed the Ocean to Discover the Secret " +
+                            "Hidden Beyond the Mountains"
+                ),
+                isLiked = false,
+                isWatchLater = false,
+                isWatched = false,
+                onLikeClick = {},
+                onWatchLaterClick = {},
+                onWatchedClick = {},
+                onBack = {}
+            )
+        }
     }
 }

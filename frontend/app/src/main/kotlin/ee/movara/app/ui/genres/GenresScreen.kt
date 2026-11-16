@@ -14,6 +14,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import ee.movara.app.R
 import ee.movara.app.ui.components.GenreTile
+import ee.movara.app.ui.layout.LocalScreenLayout
+import ee.movara.app.ui.layout.ScreenLayoutForAvailableSize
 import ee.movara.app.ui.theme.*
 import ee.movara.app.domain.model.GenreCatalog
 import androidx.compose.ui.Alignment
@@ -29,14 +31,15 @@ fun GenresScreen(
     onGenreClick: (Int) -> Unit,
     genres: List<Genre> = GenreCatalog.genres
 ) {
-    BoxWithConstraints(
+    val layout = LocalScreenLayout.current
+
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(MovaraBackground)
     ) {
-        val isMediumScreen = maxWidth >= 600.dp
-        val columns = if (isMediumScreen) 3 else 2
-        val screenPadding = if (isMediumScreen) 24.dp else 20.dp
+        val columns = layout.genreTileColumns
+        val screenPadding = layout.screenMargin
 
         Column(
             modifier = Modifier
@@ -115,7 +118,9 @@ fun GenresScreen(
 @Composable
 private fun GenresPhonePreview() {
     MovaraTheme {
-        GenresScreen(onGenreClick = {})
+        ScreenLayoutForAvailableSize {
+            GenresScreen(onGenreClick = {})
+        }
     }
 }
 
@@ -128,6 +133,8 @@ private fun GenresPhonePreview() {
 @Composable
 private fun GenresMediumPreview() {
     MovaraTheme {
-        GenresScreen(onGenreClick = {})
+        ScreenLayoutForAvailableSize {
+            GenresScreen(onGenreClick = {})
+        }
     }
 }

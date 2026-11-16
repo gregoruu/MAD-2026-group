@@ -18,6 +18,8 @@ import androidx.compose.ui.unit.dp
 import ee.movara.app.R
 import ee.movara.app.domain.model.Movie
 import ee.movara.app.ui.components.MovieCard
+import ee.movara.app.ui.layout.LocalScreenLayout
+import ee.movara.app.ui.layout.ScreenLayoutForAvailableSize
 import ee.movara.app.ui.components.PulsingPlaceholder
 import ee.movara.app.ui.theme.*
 import kotlinx.coroutines.flow.first
@@ -47,16 +49,17 @@ fun SelectedGenreScreen(
     onLoadMore: (() -> Unit)? = null,
     loadMoreError: String? = null
 ) {
-    BoxWithConstraints(
+    val layout = LocalScreenLayout.current
+
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(MovaraBackground)
     ) {
         // Three columns on phones, five on medium screens
-        val isMediumScreen = maxWidth >= 600.dp
-        val columns = if (isMediumScreen) 5 else 3
-        val screenPadding = if (isMediumScreen) 24.dp else 20.dp
-        val gridSpacing = if (isMediumScreen) 12.dp else 8.dp
+        val columns = layout.movieGridColumns
+        val screenPadding = layout.screenMargin
+        val gridSpacing = layout.movieGridSpacing
 
         Column(modifier = Modifier.fillMaxSize()) {
 
@@ -351,12 +354,14 @@ private fun PhonePreview() {
 @Composable
 private fun MediumPreview() {
     MovaraTheme {
-        SelectedGenreScreen(
-            genreId = 35,
-            movies = sampleMovies,
-            onBack = {},
-            onMovieClick = {}
-        )
+        ScreenLayoutForAvailableSize {
+            SelectedGenreScreen(
+                genreId = 35,
+                movies = sampleMovies,
+                onBack = {},
+                onMovieClick = {}
+            )
+        }
     }
 }
 

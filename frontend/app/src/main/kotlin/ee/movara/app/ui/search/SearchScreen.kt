@@ -26,7 +26,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalConfiguration
+import ee.movara.app.ui.layout.LocalScreenLayout
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -62,9 +62,9 @@ fun SearchScreen(
 ) {
   val keyboard = LocalSoftwareKeyboardController.current
   val gridState = rememberLazyGridState()
-  val isMediumOrWider = LocalConfiguration.current.screenWidthDp >= 600
-  val columnCount = if (isMediumOrWider) 5 else 3
-  val screenMargin = if (isMediumOrWider) 24.dp else 20.dp
+  val layout = LocalScreenLayout.current
+  val columnCount = layout.movieGridColumns
+  val screenMargin = layout.screenMargin
   val loadingDescription = stringResource(R.string.search_loading)
   LaunchedEffect(state.query) {
     gridState.scrollToItem(0)
