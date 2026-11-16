@@ -68,11 +68,12 @@ jobs:
       - name: Make the Gradle wrapper executable
         run: chmod +x gradlew
 
+      # Verification builds are not distributed; do not upload their R8 mappings.
       - name: Build staging APK
-        run: ./gradlew assembleStaging --no-daemon --stacktrace --console=plain
+        run: ./gradlew assembleStaging -PuploadCrashlyticsMapping=false --no-daemon --stacktrace --console=plain
 
       - name: Run unit tests
-        run: ./gradlew test --no-daemon --stacktrace --console=plain
+        run: ./gradlew test -PuploadCrashlyticsMapping=false --no-daemon --stacktrace --console=plain
 
       - name: Upload test reports
         if: ${{ always() }}

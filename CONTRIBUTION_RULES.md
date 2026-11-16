@@ -34,8 +34,8 @@ status check also covers proxy test and type-check failures.
 It then runs these commands from the repository root:
 
 ```sh
-./gradlew assembleStaging --no-daemon --stacktrace --console=plain
-./gradlew test --no-daemon --stacktrace --console=plain
+./gradlew assembleStaging -PuploadCrashlyticsMapping=false --no-daemon --stacktrace --console=plain
+./gradlew test -PuploadCrashlyticsMapping=false --no-daemon --stacktrace --console=plain
 ```
 
 Gradle dependencies and build outputs are cached by `setup-gradle`; pull requests only
@@ -44,6 +44,13 @@ timeouts to 120 seconds through `GRADLE_OPTS` to accommodate slow compiler downl
 when the cache is empty. These limits do not change the Gradle wrapper download timeout
 or retry a failed build. Unit test reports are available for seven days in
 the run's `android-test-reports` artifact, including when tests fail.
+
+Firebase's client configuration is committed in `frontend/app/google-services.json`;
+it contains public app/project identifiers, not service-account credentials.
+CI disables Crashlytics mapping uploads because its verification builds are not
+distributed. Builds shared with testers or users must keep the default uploads enabled
+so reports can be decoded with the exact build's mapping. No Firebase CLI login,
+service-account key or new repository secret is required for the build check.
 
 No repository secrets are needed. After [PR #82](https://github.com/gregoruu/MAD-2026-group/pull/82),
 the Android app uses the backend proxy and the TMDB key lives only in Cloudflare.

@@ -1,3 +1,4 @@
+import com.google.firebase.crashlytics.buildtools.gradle.CrashlyticsExtension
 import java.util.Properties
 
 plugins {
@@ -5,6 +6,8 @@ plugins {
   alias(libs.plugins.compose.compiler)
   alias(libs.plugins.kotlin.serialization)
   alias(libs.plugins.ksp)
+  alias(libs.plugins.google.services)
+  alias(libs.plugins.firebase.crashlytics)
 }
 
 // Secrets are never committed. Developers keep them in the ignored local.properties file
@@ -90,6 +93,12 @@ val releaseSigningProblem: String? = when {
 
 val releaseSigningIsConfigured: Boolean = !releaseSigningIsAbsent && releaseSigningProblem == null
 
+// Verification-only CI builds skip uploads; builds distributed to testers/users must
+// keep the default so Firebase receives the mapping for that exact build.
+val uploadCrashlyticsMapping = providers.gradleProperty("uploadCrashlyticsMapping")
+  .map { it.toBooleanStrict() }
+  .getOrElse(true)
+
 android {
   namespace = "ee.movara.app"
   compileSdk {
@@ -104,6 +113,7 @@ android {
     versionCode = 1
     versionName = "1.0"
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    manifestPlaceholders["crashlyticsCollectionEnabled"] = "false"
   }
 
   signingConfigs {
@@ -126,18 +136,18 @@ android {
 
   buildTypes {
     debug {
+      configure<CrashlyticsExtension> {
+        mappingFileUploadEnabled = false
+      }
       buildConfigField("boolean", "ENABLE_HTTP_LOGGING", "true")
       buildConfigField("String", "TMDB_BASE_URL", "\"$stagingTmdbBaseUrl\"")
     }
 
     // Staging is the build the team installs and tests, and the one issue #55 shares.
-    // It is shrunk exactly like release, because otherwise nobody ever runs a shrunk
-    // build and a missing R8 keep rule would only surface on the release everybody
-    // skips. What it keeps from debug is logging and debuggability, so a tester can
-    // still read what the app is doing.
-    //
-    // The cost is that stack traces from a staging build are obfuscated. The mapping
-    // file for them is written to build/outputs/mapping/staging/.
+    // Shrinking is enabled, but debuggability limits R8 optimization and obfuscation.
+    // Staging therefore does not fully validate release keep rules or stack traces;
+    // test a non-debuggable release build too. Each shared build uploads its own
+    // mapping to Crashlytics and keeps a local copy in build/outputs/mapping/<variant>/.
     //
     // initWith copies build type settings, not dependencies, so staging deliberately does
     // not get the debugImplementation Compose tooling. Staging is handed to other people
@@ -145,6 +155,10 @@ android {
     // debug build instead.
     create("staging") {
       initWith(getByName("debug"))
+      manifestPlaceholders["crashlyticsCollectionEnabled"] = "true"
+      configure<CrashlyticsExtension> {
+        mappingFileUploadEnabled = uploadCrashlyticsMapping
+      }
       applicationIdSuffix = ".staging"
       versionNameSuffix = "-staging"
       isDebuggable = true
@@ -156,6 +170,10 @@ android {
     }
 
     release {
+      manifestPlaceholders["crashlyticsCollectionEnabled"] = "true"
+      configure<CrashlyticsExtension> {
+        mappingFileUploadEnabled = uploadCrashlyticsMapping
+      }
       isDebuggable = false
       isMinifyEnabled = true
       isShrinkResources = true
@@ -250,6 +268,12 @@ tasks.matching { it.name == "assembleRelease" || it.name == "bundleRelease" }.co
 }
 
 dependencies {
+  // Debug has no Firebase SDK or initializer, even though it shares the release app ID.
+  listOf("stagingImplementation", "releaseImplementation").forEach { configuration ->
+    add(configuration, platform(libs.firebase.bom))
+    add(configuration, libs.firebase.crashlytics)
+  }
+
   val composeBom = platform(libs.androidx.compose.bom)
   implementation(composeBom)
   androidTestImplementation(composeBom)
