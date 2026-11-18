@@ -28,7 +28,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -170,7 +170,19 @@ fun MovieCard(
 private const val SPOTLIGHT_PHONE_TITLE_MAX_LINES = 4
 private const val SPOTLIGHT_WIDE_TITLE_MAX_LINES = 2
 
-// SpotlightCard: 62% of screen height.
+// 62% of the app window height, as in the design specs.
+// Measured from the window, the same source as the layout switch, so the card also fits
+// a split-screen or partly unfolded window.
+@Composable
+fun spotlightCardHeight(): Dp {
+    val windowHeightPx = LocalWindowInfo.current.containerSize.height
+    val windowHeight = with(LocalDensity.current) {
+        windowHeightPx.toDp()
+    }
+    return windowHeight * 0.62f
+}
+
+// SpotlightCard: 62% of the window height.
 // The phone layout grows past that when a large font needs more room.
 @Composable
 fun SpotlightCard(
@@ -181,8 +193,7 @@ fun SpotlightCard(
     horizontal: Boolean = false,
     actions: (@Composable () -> Unit)? = null
 ) {
-    val targetHeight = height
-        ?: (LocalConfiguration.current.screenHeightDp.dp * 0.62f)
+    val targetHeight = height ?: spotlightCardHeight()
 
     // The wide layout scrolls inside the card, so it keeps a fixed height.
     // The phone layout sets its own minimum height on the text column below.

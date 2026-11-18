@@ -24,7 +24,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -42,6 +41,7 @@ import ee.movara.app.ui.components.MovieActionButton
 import ee.movara.app.ui.components.MovieCard
 import ee.movara.app.ui.components.PulsingPlaceholder
 import ee.movara.app.ui.components.SpotlightCard
+import ee.movara.app.ui.components.spotlightCardHeight
 import ee.movara.app.ui.layout.LocalScreenLayout
 import ee.movara.app.ui.layout.ScreenLayoutForAvailableSize
 import ee.movara.app.ui.theme.MovaraTheme
@@ -81,13 +81,12 @@ internal fun HomeContent(
   modifier: Modifier = Modifier,
   onEditPreferences: () -> Unit = {}
 ) {
-  val configuration = LocalConfiguration.current
   val layout = LocalScreenLayout.current
   Box(modifier.fillMaxSize()) {
     // Medium screens show the Spotlight as a wide card with the poster on the left
     val horizontalSpotlight = layout.isMedium
     val screenMargin = layout.screenMargin
-    val spotlightHeight = configuration.screenHeightDp.dp * 0.62f
+    val spotlightHeight = spotlightCardHeight()
     LazyColumn(
       modifier = Modifier.fillMaxSize(),
       contentPadding = PaddingValues(bottom = 24.dp),

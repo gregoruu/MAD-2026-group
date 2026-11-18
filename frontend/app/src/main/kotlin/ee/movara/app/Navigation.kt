@@ -27,6 +27,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import ee.movara.app.ui.layout.LocalScreenLayout
 import androidx.compose.foundation.layout.padding
@@ -148,8 +149,9 @@ fun MainNavigation(container: AppContainer) {
 }
 
 
+// Internal, so the navigation layout test can show it without the first-launch quiz.
 @Composable
-private fun AppNavigation(container: AppContainer) {
+internal fun AppNavigation(container: AppContainer) {
   val navController = rememberNavController()
   val movieLists: MovieListsViewModel = viewModel { MovieListsViewModel(container.movieRepository) }
   val listsState by movieLists.uiState.collectAsStateWithLifecycle()
@@ -197,7 +199,10 @@ private fun AppNavigation(container: AppContainer) {
       if (showBottomBar) {
         // No fixed height: the bar's own 80 dp minimum sits above the system inset
         // and the bar grows when a large font needs room for the labels.
-        NavigationBar(containerColor = MovaraSurface) {
+        NavigationBar(
+          containerColor = MovaraSurface,
+          modifier = Modifier.testTag("main_bottom_bar")
+        ) {
           for (tab in mainTabs) {
             val selected = tab.isSelected(currentDestination)
             NavigationBarItem(
@@ -233,7 +238,10 @@ private fun AppNavigation(container: AppContainer) {
 
     Row(modifier = Modifier.fillMaxSize()) {
       if (showNavigationRail) {
-        NavigationRail(containerColor = MovaraSurface) {
+        NavigationRail(
+          containerColor = MovaraSurface,
+          modifier = Modifier.testTag("main_navigation_rail")
+        ) {
           for (tab in mainTabs) {
             val selected = tab.isSelected(currentDestination)
             NavigationRailItem(
