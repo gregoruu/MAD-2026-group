@@ -10,4 +10,4 @@ keeps two people working on different decisions out of each other's way.
 
 | Decision | Subject |
 | --- | --- |
-| [0001](0001-tmdb-api-key-in-the-client.md) | The TMDB API key lives in the client, and builds are not published publicly |
+| [0001](0001-tmdb-api-key-in-the-client.md) | Superseded: previous client-side TMDB API key approach |
