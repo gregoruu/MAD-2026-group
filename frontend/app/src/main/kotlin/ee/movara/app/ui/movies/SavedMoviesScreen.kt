@@ -24,6 +24,7 @@ import ee.movara.app.ui.components.MovieAction
 import ee.movara.app.ui.components.MovieActionButton
 import ee.movara.app.ui.components.EmptyState
 import ee.movara.app.ui.components.PulsingPlaceholder
+import ee.movara.app.ui.layout.LocalScreenLayout
 import ee.movara.app.ui.theme.*
 
 internal val MovieListType.label: String
@@ -43,9 +44,10 @@ fun SavedMoviesScreen(
 ) {
   var selected by rememberSaveable { mutableStateOf(MovieListType.LIKED) }
   val tabStates = rememberSaveableStateHolder()
-  BoxWithConstraints(Modifier.fillMaxSize()) {
-    val medium = maxWidth >= 600.dp
-    val margin = if (medium) MovaraSpacing.screenMarginExpanded else MovaraSpacing.screenMargin
+  val layout = LocalScreenLayout.current
+  Box(Modifier.fillMaxSize()) {
+    val columns = layout.savedMovieColumns
+    val margin = layout.screenMargin
     Column(
       Modifier.fillMaxSize().padding(horizontal = margin).padding(top = 16.dp),
       verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -87,7 +89,7 @@ fun SavedMoviesScreen(
           state.isLoading -> {
             val loadingLabel = stringResource(R.string.my_movies_loading)
             LazyVerticalGrid(
-              columns = GridCells.Fixed(if (medium) 2 else 1),
+              columns = GridCells.Fixed(columns),
               modifier = Modifier.weight(1f).semantics { contentDescription = loadingLabel },
               horizontalArrangement = Arrangement.spacedBy(16.dp),
               verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -124,7 +126,7 @@ fun SavedMoviesScreen(
           }
           else -> {
             LazyVerticalGrid(
-              columns = GridCells.Fixed(if (medium) 2 else 1),
+              columns = GridCells.Fixed(columns),
               modifier = Modifier.weight(1f),
               contentPadding = PaddingValues(bottom = margin),
               horizontalArrangement = Arrangement.spacedBy(16.dp),

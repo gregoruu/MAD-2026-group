@@ -9,6 +9,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ee.movara.app.ui.components.PulsingPlaceholder
+import ee.movara.app.ui.layout.LocalScreenLayout
 import ee.movara.app.ui.theme.MovaraBackground
 
 @Composable
@@ -17,6 +18,7 @@ fun MovieDetailsRouteContent(
     onBack: () -> Unit
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val screenMargin = LocalScreenLayout.current.screenMargin
     Scaffold(containerColor = MovaraBackground) { padding ->
 
         when {
@@ -25,7 +27,7 @@ fun MovieDetailsRouteContent(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(padding)
-                        .padding(20.dp),
+                        .padding(screenMargin),
                     verticalArrangement =
                         Arrangement.spacedBy(16.dp)
                 ) {
@@ -92,7 +94,7 @@ fun MovieDetailsRouteContent(
 
                 Column(Modifier.padding(padding)) {
                     state.actionError?.let { message ->
-                        Text(message, Modifier.padding(horizontal = 20.dp))
+                        Text(message, Modifier.padding(horizontal = screenMargin))
                         TextButton(onClick = viewModel::retryLists) { Text("Retry storage") }
                     }
                     MovieDetailsScreen(

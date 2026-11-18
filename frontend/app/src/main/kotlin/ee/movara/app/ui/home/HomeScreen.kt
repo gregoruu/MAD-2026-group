@@ -1,7 +1,7 @@
 package ee.movara.app.ui.home
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
@@ -24,7 +24,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -42,6 +41,9 @@ import ee.movara.app.ui.components.MovieActionButton
 import ee.movara.app.ui.components.MovieCard
 import ee.movara.app.ui.components.PulsingPlaceholder
 import ee.movara.app.ui.components.SpotlightCard
+import ee.movara.app.ui.components.spotlightCardHeight
+import ee.movara.app.ui.layout.LocalScreenLayout
+import ee.movara.app.ui.layout.ScreenLayoutForAvailableSize
 import ee.movara.app.ui.theme.MovaraTheme
 import ee.movara.app.ui.components.EmptyState
 import ee.movara.app.ui.state.UiState
@@ -55,7 +57,7 @@ fun HomeScreen(
   modifier: Modifier = Modifier
 ) {
   val state by viewModel.uiState.collectAsStateWithLifecycle()
-  androidx.compose.foundation.layout.Box(modifier.fillMaxSize()) {
+  Box(modifier.fillMaxSize()) {
     HomeContent(
       state = state,
       onSearch = onSearch,
@@ -79,11 +81,12 @@ internal fun HomeContent(
   modifier: Modifier = Modifier,
   onEditPreferences: () -> Unit = {}
 ) {
-  val configuration = LocalConfiguration.current
-  BoxWithConstraints(modifier.fillMaxSize()) {
-    val horizontalSpotlight = maxWidth >= 600.dp
-    val screenMargin = if (horizontalSpotlight) 24.dp else 20.dp
-    val spotlightHeight = configuration.screenHeightDp.dp * 0.62f
+  val layout = LocalScreenLayout.current
+  Box(modifier.fillMaxSize()) {
+    // Medium screens show the Spotlight as a wide card with the poster on the left
+    val horizontalSpotlight = layout.isMedium
+    val screenMargin = layout.screenMargin
+    val spotlightHeight = spotlightCardHeight()
     LazyColumn(
       modifier = Modifier.fillMaxSize(),
       contentPadding = PaddingValues(bottom = 24.dp),
@@ -282,9 +285,11 @@ private fun HomeMessage(message: String, retry: Boolean, onRetry: () -> Unit, sc
 private fun HomePreview() {
   val movie = Movie(1, "The Grand Budapest Hotel", null, 2014)
   MovaraTheme {
-    HomeContent(
-      HomeUiState(loading = false, recommendations = listOf(MovieRecommendation(movie))),
-      {}, {}, {}, {}, {}
-    )
+    ScreenLayoutForAvailableSize {
+      HomeContent(
+        HomeUiState(loading = false, recommendations = listOf(MovieRecommendation(movie))),
+        {}, {}, {}, {}, {}
+      )
+    }
   }
 }

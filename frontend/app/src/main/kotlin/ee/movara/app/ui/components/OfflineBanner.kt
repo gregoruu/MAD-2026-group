@@ -17,12 +17,15 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import ee.movara.app.R
+import ee.movara.app.ui.layout.LocalScreenLayout
 import ee.movara.app.ui.theme.MovaraGold
 import ee.movara.app.ui.theme.MovaraSurface
 import ee.movara.app.ui.theme.MovaraText
 
 @Composable
 fun OfflineBanner(modifier: Modifier = Modifier) {
+    // Same side margin as the screen below: 20 dp on compact, 24 dp on medium
+    val screenMargin = LocalScreenLayout.current.screenMargin
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -32,7 +35,7 @@ fun OfflineBanner(modifier: Modifier = Modifier) {
                 liveRegion = LiveRegionMode.Polite
             }
             .padding(
-                horizontal = 20.dp,
+                horizontal = screenMargin,
                 vertical = 10.dp
             ),
         verticalArrangement = Arrangement.spacedBy(4.dp)
