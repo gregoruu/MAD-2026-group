@@ -16,5 +16,15 @@ Serve as a fast and centralized recommendation platform that remembers and analy
 # **Business goals**
 The primary goal of this project is to design and deploy a fully functional Minimum Viable Product (MVP) that integrates movie search, user preferences, and personal watchlists into a single platform. By delivering personalized recommendations based on user likings and watch history, the application aims to improve the overall user experience by minimizing decision fatigue and reducing the time spent on choosing movies. Additionally, the project focuses on implementing a smart recommendation algorithm to ensure accurate and relevant movie suggestions. 
 
+## Install the staging version
+
+1. Open the [v0.1.0-staging release](https://github.com/gregoruu/MAD-2026-group/releases/tag/v0.1.0-staging).
+2. Download `app-staging.apk` from the release assets.
+3. Open the APK on an Android device running Android 8.0 or newer.
+4. If prompted, allow installation from the browser or file manager you used.
+5. Install and open **Movara (Staging)**.
+
+An internet connection is needed to load movie data.
+
 ## **Contribution rules**
 View rules here: [CONTRIBUTION_RULES.md](./CONTRIBUTION_RULES.md)
