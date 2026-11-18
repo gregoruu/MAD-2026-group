@@ -1,6 +1,10 @@
 # Decision 1: The TMDB API key lives in the client, and builds are not published publicly
 
-**Status:** accepted
+> This decision is outdated. Movara now uses a Cloudflare
+> Worker to keep the TMDB API key outside the Android app.
+> See [architecture.md](../architecture.md) for the current setup.
+
+**Status:** superseded
 **Date:** 2026-11-01
 **Related issues:** #22 (key out of source control), #55 (staging build), #52 (empty `backend/` folder)
 
