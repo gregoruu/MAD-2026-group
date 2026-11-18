@@ -23,8 +23,6 @@ data class ScreenLayout(
   val screenMargin: Dp,
   /** Search results and the movies of a selected genre. */
   val movieGridColumns: Int,
-  /** Gap between the posters of a selected genre. */
-  val movieGridSpacing: Dp,
   val genreTileColumns: Int,
   val savedMovieColumns: Int
 )
@@ -33,7 +31,6 @@ val CompactScreenLayout = ScreenLayout(
   isMedium = false,
   screenMargin = MovaraSpacing.screenMargin,
   movieGridColumns = 3,
-  movieGridSpacing = 8.dp,
   genreTileColumns = 2,
   savedMovieColumns = 1
 )
@@ -42,7 +39,6 @@ val MediumScreenLayout = ScreenLayout(
   isMedium = true,
   screenMargin = MovaraSpacing.screenMarginExpanded,
   movieGridColumns = 5,
-  movieGridSpacing = 12.dp,
   genreTileColumns = 3,
   savedMovieColumns = 2
 )

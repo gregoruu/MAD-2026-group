@@ -432,7 +432,7 @@ private fun MovieDetailsPhonePreview() {
     name = "Medium - Movie Details",
     showBackground = true,
     widthDp = 700,
-    heightDp = 900
+    heightDp = 840
 )
 @Composable
 private fun MovieDetailsMediumPreview() {
@@ -513,7 +513,7 @@ private fun MovieDetailsLongTitlePhonePreview() {
     name = "Long title - Medium",
     showBackground = true,
     widthDp = 700,
-    heightDp = 900
+    heightDp = 840
 )
 @Composable
 private fun MovieDetailsLongTitleMediumPreview() {

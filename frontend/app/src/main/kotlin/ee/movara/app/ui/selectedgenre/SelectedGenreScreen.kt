@@ -59,7 +59,8 @@ fun SelectedGenreScreen(
         // Three columns on phones, five on medium screens
         val columns = layout.movieGridColumns
         val screenPadding = layout.screenMargin
-        val gridSpacing = layout.movieGridSpacing
+        // 16 dp between movie cards, as in Search
+        val gridSpacing = 16.dp
 
         Column(modifier = Modifier.fillMaxSize()) {
 
@@ -119,7 +120,7 @@ fun SelectedGenreScreen(
                         horizontalArrangement =
                             Arrangement.spacedBy(gridSpacing),
                         verticalArrangement =
-                            Arrangement.spacedBy(12.dp)
+                            Arrangement.spacedBy(gridSpacing)
                     ) {
                         items(columns * 3) {
                             PulsingPlaceholder(
@@ -227,7 +228,7 @@ fun SelectedGenreScreen(
                         horizontalArrangement =
                             Arrangement.spacedBy(gridSpacing),
                         verticalArrangement =
-                            Arrangement.spacedBy(12.dp)
+                            Arrangement.spacedBy(gridSpacing)
                     ) {
                         items(
                             items = movies,
@@ -349,7 +350,7 @@ private fun PhonePreview() {
     name = "Medium - 5 columns",
     showBackground = true,
     widthDp = 700,
-    heightDp = 900
+    heightDp = 840
 )
 @Composable
 private fun MediumPreview() {

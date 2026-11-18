@@ -25,7 +25,6 @@ class ScreenLayoutTest {
     assertFalse(layout.isMedium)
     assertEquals(20.dp, layout.screenMargin)
     assertEquals(3, layout.movieGridColumns)
-    assertEquals(8.dp, layout.movieGridSpacing)
     assertEquals(2, layout.genreTileColumns)
     assertEquals(1, layout.savedMovieColumns)
   }
@@ -36,7 +35,6 @@ class ScreenLayoutTest {
     assertTrue(layout.isMedium)
     assertEquals(24.dp, layout.screenMargin)
     assertEquals(5, layout.movieGridColumns)
-    assertEquals(12.dp, layout.movieGridSpacing)
     assertEquals(3, layout.genreTileColumns)
     assertEquals(2, layout.savedMovieColumns)
   }

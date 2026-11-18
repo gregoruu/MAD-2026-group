@@ -128,7 +128,7 @@ private fun GenresPhonePreview() {
     name = "Medium - 3 columns",
     showBackground = true,
     widthDp = 700,
-    heightDp = 900
+    heightDp = 840
 )
 @Composable
 private fun GenresMediumPreview() {
