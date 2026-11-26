@@ -1,5 +1,7 @@
 package ee.movara.app.ui.movies
 
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -58,26 +60,42 @@ fun SavedMoviesScreen(
           Icon(painterResource(R.drawable.ic_ui_info), contentDescription = stringResource(R.string.about_title))
         }
       }
-      SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-        MovieListType.entries.forEachIndexed { index, type ->
-          SegmentedButton(
-            selected = selected == type,
-            onClick = { selected = type },
-            icon = {},
-            shape = SegmentedButtonDefaults.itemShape(index, MovieListType.entries.size, RoundedCornerShape(8.dp)),
-            modifier = Modifier.heightIn(min = 48.dp),
-            colors = SegmentedButtonDefaults.colors(
-              activeContainerColor = MovaraGold,
-              activeContentColor = MovaraBackground,
-              inactiveContainerColor = MovaraSurface,
-              inactiveContentColor = MovaraTextSecondary,
-              activeBorderColor = MovaraGold,
-              inactiveBorderColor = MovaraBorder
-            )
-          ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-              Text(type.label, style = MaterialTheme.typography.labelSmall)
-              Text(if (state.isLoading) "…" else "${state.lists.movies(type).size}", style = MaterialTheme.typography.labelSmall)
+      BoxWithConstraints(Modifier.fillMaxWidth()) {
+        // Keep full labels at the system font size. If they cannot fit, scroll the
+        // group instead of squeezing words into equal fractions of the viewport.
+        SingleChoiceSegmentedButtonRow(
+          Modifier.horizontalScroll(rememberScrollState())
+            .widthIn(min = maxWidth)
+            .height(IntrinsicSize.Min)
+        ) {
+          MovieListType.entries.forEachIndexed { index, type ->
+            SegmentedButton(
+              selected = selected == type,
+              onClick = { selected = type },
+              icon = {},
+              shape = SegmentedButtonDefaults.itemShape(index, MovieListType.entries.size, RoundedCornerShape(8.dp)),
+              modifier = Modifier.fillMaxHeight().heightIn(min = 48.dp),
+              colors = SegmentedButtonDefaults.colors(
+                activeContainerColor = MovaraGold,
+                activeContentColor = MovaraBackground,
+                inactiveContainerColor = MovaraSurface,
+                inactiveContentColor = MovaraTextSecondary,
+                activeBorderColor = MovaraGold,
+                inactiveBorderColor = MovaraBorder
+              )
+            ) {
+              Column(
+                Modifier.width(IntrinsicSize.Max),
+                horizontalAlignment = Alignment.CenterHorizontally
+              ) {
+                Text(type.label, style = MaterialTheme.typography.labelSmall, maxLines = 1, softWrap = false)
+                Text(
+                  if (state.isLoading) "…" else "${state.lists.movies(type).size}",
+                  style = MaterialTheme.typography.labelSmall,
+                  maxLines = 1,
+                  softWrap = false
+                )
+              }
             }
           }
         }
