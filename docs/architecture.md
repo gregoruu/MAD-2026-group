@@ -460,6 +460,10 @@ Worker versions, secret values or a distributor's release keystore.
 
 ## Permissions and user accounts
 
+The [release security audit](security-audit.md) records the #123 findings and
+verification. `res/xml/network_security_config.xml` explicitly denies cleartext HTTP
+for all app variants while retaining the platform TLS trust configuration.
+
 The app declares two Android platform permissions:
 
 | Permission | Purpose |

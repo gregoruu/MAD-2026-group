@@ -8,7 +8,19 @@ out/
 # Local machine configuration and secrets. Never commit these.
 local.properties
 
-# Signing keys. Never commit these.
+# Local environment secrets (keep only templates in Git).
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Signing keys and private credentials. Never commit these.
 *.jks
 *.keystore
+*.p12
+*.pfx
+*.pem
+*.key
+service-account*.json
+*-firebase-adminsdk-*.json
 /.worktrees/

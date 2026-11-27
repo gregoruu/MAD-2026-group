@@ -35,7 +35,8 @@ It then runs these commands from the repository root:
 
 ```sh
 ./gradlew assembleStaging -PuploadCrashlyticsMapping=false --no-daemon --stacktrace --console=plain
-./gradlew test -PuploadCrashlyticsMapping=false --no-daemon --stacktrace --console=plain
+./gradlew :app:assembleRelease :app:lintRelease -PuploadCrashlyticsMapping=false --no-daemon --stacktrace --console=plain
+./gradlew test :app:testReleaseUnitTest -PuploadCrashlyticsMapping=false --no-daemon --stacktrace --console=plain
 ```
 
 Gradle dependencies and build outputs are cached by `setup-gradle`; pull requests only
