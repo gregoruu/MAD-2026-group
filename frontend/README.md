@@ -148,6 +148,15 @@ Only the person preparing a shared build needs the keystore. Everyone else can i
 
 Live Edit requires API 30 or newer; the API 37 emulator meets this requirement. Adding functions, changing function signatures, or changing build configuration requires clicking **Run** again.
 
+## Security audit (#123)
+
+See [the release security and permissions audit](../docs/security-audit.md) for the
+reviewed configuration, findings, verification results and remaining operational
+checks. All app variants explicitly deny cleartext HTTP through
+`res/xml/network_security_config.xml`. Local JVM MockWebServer tests are unaffected;
+using the local Worker from an installed app requires a deliberate debug-only
+network configuration rather than weakening the shared policy.
+
 ## Crash reporting (#49)
 
 Firebase project `movara-a9a67` contains two Android registrations:

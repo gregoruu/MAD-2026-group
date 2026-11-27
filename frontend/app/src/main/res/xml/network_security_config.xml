@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Apply to API calls, images and SDK traffic; use the platform trust anchors. -->
+    <base-config cleartextTrafficPermitted="false" />
+</network-security-config>

@@ -72,8 +72,12 @@ jobs:
       - name: Build staging APK
         run: ./gradlew assembleStaging -PuploadCrashlyticsMapping=false --no-daemon --stacktrace --console=plain
 
+      # Audit the production variant too; staging deliberately remains debuggable.
+      - name: Build and lint release APK
+        run: ./gradlew :app:assembleRelease :app:lintRelease -PuploadCrashlyticsMapping=false --no-daemon --stacktrace --console=plain
+
       - name: Run unit tests
-        run: ./gradlew test -PuploadCrashlyticsMapping=false --no-daemon --stacktrace --console=plain
+        run: ./gradlew test :app:testReleaseUnitTest -PuploadCrashlyticsMapping=false --no-daemon --stacktrace --console=plain
 
       - name: Upload test reports
         if: ${{ always() }}
